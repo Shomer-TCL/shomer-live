@@ -98,6 +98,14 @@ def normalize_stock(folder,release):
             if p.is_file() and p!=folder/'SHA256SUMS':out.write(digest(p)+'  '+str(p.relative_to(folder))+'\n')
     return excluded
 
+def normalize_current(folder):
+    original=folder/'SHA256SUMS'
+    provenance=folder/'Source-provenance';provenance.mkdir()
+    if original.exists():original.rename(provenance/'SHA256SUMS.original')
+    with original.open('w') as out:
+        for p in sorted(folder.rglob('*')):
+            if p.is_file() and p!=original:out.write(digest(p)+'  '+str(p.relative_to(folder))+'\n')
+
 def firmware():
     for stock in ['KEKA','KEE7']:
         src=BUILD/'inputs'/('stock-'+stock);dst=KIT/'Images/Stock/T408DL'/stock;tree(src,dst)
@@ -109,6 +117,7 @@ def firmware():
     join(sorted(current.glob('super.raw.gz.part-*')),current/'super.raw.gz')
     plan=json.loads((current/'flash-plan.json').read_text());checked(current/'super.raw.gz',plan['super_raw_gz']['sha256'])
     for p in current.glob('super.raw.gz.part-*'):p.unlink()
+    normalize_current(current)
     raw=BUILD/'super.raw'
     with gzip.open(current/'super.raw.gz','rb') as r,raw.open('wb') as f:shutil.copyfileobj(r,f,1024*1024)
     checked(raw,plan['write_order'][-1]['sha256'])

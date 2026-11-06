@@ -26,6 +26,15 @@ class ArchiveTests(unittest.TestCase):
                 with self.assertRaises(ValueError):stage.extract(archive,p/'unpacked')
 
 class StockPackageTests(unittest.TestCase):
+    def test_current_image_checksums_cover_joined_files(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=pathlib.Path(d)
+            (p/'super.raw.gz').write_bytes(b'joined-image')
+            (p/'SHA256SUMS').write_text('obsolete split-part paths\n')
+            stage.normalize_current(p)
+            result=subprocess.run(['sha256sum','-c','SHA256SUMS'],cwd=p,capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertEqual((p/'Source-provenance/SHA256SUMS.original').read_text(),'obsolete split-part paths\n')
     def test_packaged_checksums_follow_renames_and_exclude_device_artifacts(self):
         for release,expected in [('KEKA','ROOTED-recovery2.img'),('KEE7','STOCK-recovery-KEE7.img')]:
             with tempfile.TemporaryDirectory() as d:

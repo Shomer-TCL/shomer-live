@@ -57,6 +57,7 @@ sha256sum -c Checksums-and-manifests/files.sha256 >/mnt/shomer-test/toolkit-chec
 for stock in KEKA KEE7; do
   (cd "$kit/Images/Stock/T408DL/$stock" && sha256sum -c SHA256SUMS) >"/mnt/shomer-test/stock-$stock-checksums.log"
 done
+(cd "$kit/Images/Shomer/2026-11-05_785693c" && sha256sum -c SHA256SUMS) >/mnt/shomer-test/current-image-checksums.log
 mkdir -p /mnt/shomer-test/gui /mnt/shomer-test/image-inspection
 "$kit/Shomer-Flasher/shomer-flasher" --gui-smoke /mnt/shomer-test/gui
 test "$(find /mnt/shomer-test/gui -name '*.png' | wc -l)" -ge 6

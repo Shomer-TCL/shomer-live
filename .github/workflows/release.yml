@@ -40,7 +40,8 @@ jobs:
       - name: Install build, GUI and VM test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential pkg-config libgtk-3-dev xvfb xauth xdotool openbox imagemagick python3-pip python3-venv python3-pyte qemu-system-x86 ovmf e2fsprogs
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libgtk-3-dev xvfb xauth xdotool openbox imagemagick python3-pip python3-venv python3-pyte qemu-system-x86 ovmf e2fsprogs acl
+          if [ -c /dev/kvm ]; then sudo setfacl -m "u:$(id -un):rw" /dev/kvm; fi
       - uses: actions/setup-go@v5
         with:
           go-version: '1.27.3'
