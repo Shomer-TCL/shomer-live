@@ -17,8 +17,13 @@ mousepad
 ristretto
 zenity
 adwaita-icon-theme
+librsvg2-common
 fonts-dejavu-core
 fonts-noto-core
+x11-utils
+xdotool
+imagemagick
+python3-pyte
 sudo
 policykit-1
 udisks2
@@ -34,6 +39,12 @@ libusb-1.0-0
 libusb-0.1-4
 libfuse2t64
 libxcb-cursor0
+libxcb-icccm4
+libxcb-image0
+libxcb-keysyms1
+libxcb-render-util0
+libxcb-xinerama0
+libxcb-xkb1
 libxkbcommon-x11-0
 libegl1
 libgl1

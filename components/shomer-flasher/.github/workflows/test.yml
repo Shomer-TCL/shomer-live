@@ -1,0 +1,135 @@
+# Tests on every push (main included). Never creates or publishes a release.
+# backup-first: builds a SMALL test flasher (fake ROM, fake vbmeta) that carries the REAL pinned
+# recovery images, and runs the end-to-end tests against mock fastboot/adb/preloader:
+# the console (test/e2e.py) and the Linux TUI in a pseudo-terminal (test/e2e_tui.py).
+# gui-smoke: the Windows window opens, shows every screen, closes; screenshots as an artifact.
+name: test
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - run: go vet ./...
+      - run: go test -v ./...
+      # Windows: includes internal/gui's dialog tests (the real text box on the runner's desktop)
+
+  e2e-backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Fetch recovery2 (stock/KEKA/recovery), stock KEKA boot and stock KEKA super from shomer-images (read-only key)
+        env:
+          KEY: ${{ secrets.IMAGES_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/images && chmod 600 ~/.ssh/images
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/images -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git clone --depth 1 --filter=blob:none --sparse git@github.com:Shomer-TCL/shomer-images.git images
+          cd images && git sparse-checkout set --no-cone /stock/KEKA/SHA256SUMS /stock/KEKA/recovery /stock/KEKA/boot '/stock/KEKA/super.gz.part-*'
+          cd stock/KEKA && grep -E ' (recovery|boot|super\.gz\.part-[0-9]+)$' SHA256SUMS | sha256sum -c -
+          mkdir -p "$GITHUB_WORKSPACE/rec"
+          cp recovery "$GITHUB_WORKSPACE/rec/recovery2.img"; cp boot "$GITHUB_WORKSPACE/rec/stock-boot-KEKA.img"
+          cat super.gz.part-* > "$GITHUB_WORKSPACE/rec/keka-super.gz"
+          cd "$GITHUB_WORKSPACE" && rm -rf images
+      - name: Rebuild the genuine stock KEKA recovery
+        run: |
+          pip install bsdiff4==1.4.1
+          python3 tools/make-stock-recovery.py rec/stock-boot-KEKA.img rec/keka-super.gz rec/stock-recovery-KEKA.img
+          rm rec/keka-super.gz rec/stock-boot-KEKA.img
+      - name: Windows platform-tools 37.0.1 (from Google, SHA-256 pinned like the release) for the Windows test exe
+        run: |
+          set -euo pipefail
+          curl -fsSL -o ptw.zip https://dl.google.com/android/repository/platform-tools_r37.0.1-win.zip
+          echo "45f4d63113e895ebde0c90f194099a4676b6ac653bd28d54314a9e022bbc1a99  ptw.zip" | sha256sum -c -
+          mkdir -p ptw && unzip -q ptw.zip -d ptw
+      - name: Build a small test flasher with the real recoveries, run the end-to-end tests (console + TUI)
+        run: |
+          set -euo pipefail
+          PT_WINDOWS=$PWD/ptw/platform-tools test/make-test-flasher.sh rec t
+          python3 test/e2e.py t/shomer-flasher-test
+          pip install pyte==0.8.2
+          python3 test/e2e_tui.py t/shomer-flasher-test tui-captures
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tui-captures
+          path: tui-captures/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-flasher-windows
+          path: t/shomer-flasher-test.exe
+          retention-days: 3
+
+  # The window driven like a person (real keyboard + mouse input) on the small
+  # Windows test flasher: no phone, type " upci " into the version box, OK.
+  gui-e2e:
+    needs: e2e-backup
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: test-flasher-windows
+          path: tw
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Drive the window (pywinauto, test only; not in the program)
+        shell: pwsh
+        run: |
+          pip install pywinauto==0.6.9 pillow
+          python test/e2e_gui_windows.py tw\shomer-flasher-test.exe gui-e2e
+          if ($LASTEXITCODE -ne 0) { throw "GUI e2e failed" }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gui-e2e-screens
+          path: |
+            gui-e2e/
+            tw/*.log
+
+  gui-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Build the Windows exe (no payload) and open the window
+        shell: pwsh
+        run: |
+          $env:CGO_ENABLED = "0"
+          go build -ldflags "-X main.version=ci-gui" -o sf.exe ./cmd/shomer-flasher
+          if ($LASTEXITCODE -ne 0) { throw "build failed" }
+          $v = & .\sf.exe --version
+          if ($v -ne "shomer-flasher ci-gui") { throw "version: $v" }
+          & .\sf.exe --gui-smoke gui-shots
+          if ($LASTEXITCODE -ne 0) { throw "gui smoke failed" }
+          $n = (Get-ChildItem gui-shots -Filter *.png).Count
+          if ($n -lt 6) { throw "only $n screenshots" }
+          Get-ChildItem gui-shots
+      - name: The window's question boxes answered through Windows messages (--gui-selftest)
+        shell: pwsh
+        run: |
+          & .\sf.exe --gui-selftest
+          if ($LASTEXITCODE -ne 0) { throw "gui selftest failed" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gui-screenshots
+          path: gui-shots/

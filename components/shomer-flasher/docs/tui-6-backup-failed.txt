@@ -1,0 +1,34 @@
+ SHOMER flasher 1.4.1                       Checks > Phone > Options > Confirm > Writing > Finished
+ Writing - do NOT unplug the cable
+
+ [x] Unlock the bootloader (press Volume Up on the phone) - ERASES all data on the phone
+ [x] Backup 1/3: write the reading recovery (neutronscott's recovery2)
+ [!] Backup 2/3: copy every partition except userdata into a zip in /home/sam/shomer-backups (rea…
+ [x] Backup 3/3: write the stock TCL recovery back (always, even if the backup fails)
+ [ ] Write vbmeta (stock KEKA, verification off)
+ [ ] Write vbmeta_system (stock KEKA, verification off)
+ [ ] Write vbmeta_vendor (stock KEKA, verification off)
+ [ ] Write super - Shomer OS 2026-11-05_785693c (2048 MB)
+ [ ] Restart the phone
+
+
+
+
+
+
+
+
+
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Backup failed                                                                                  ┃
+┃ BACKUP FAILED: these partitions could not be copied and checked: nvram. The backup is          ┃
+┃ INCOMPLETE                                                                                     ┃
+┃ The stock TCL recovery is back on the phone. Nothing else was written yet.                     ┃
+┃                                                                                                ┃
+┃ Backup failed: continue flashing WITHOUT a backup?                                             ┃
+┃                                                                                                ┃
+┃    Yes      [ No ]                                                                             ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ Left/Right choose  Enter OK  y yes  n no  q quit

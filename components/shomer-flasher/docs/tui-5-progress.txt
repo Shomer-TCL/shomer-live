@@ -1,0 +1,34 @@
+ SHOMER flasher 1.4.1                       Checks > Phone > Options > Confirm > Writing > Finished
+ Writing - do NOT unplug the cable
+
+ [x] Unlock the bootloader (press Volume Up on the phone) - ERASES all data on the phone
+ [x] Backup 1/3: write the reading recovery (neutronscott's recovery2)
+ [>] Backup 2/3: copy every partition except userdata into a zip in /home/sam/shomer-backups (rea…
+ [ ] Backup 3/3: write the stock TCL recovery back (always, even if the backup fails)
+ [ ] Write vbmeta (stock KEKA, verification off)
+ [ ] Write vbmeta_system (stock KEKA, verification off)
+ [ ] Write vbmeta_vendor (stock KEKA, verification off)
+ [ ] Write super - Shomer OS 2026-11-05_785693c (2048 MB)
+ [ ] Restart the phone
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ███████████████████████████████░░░░░░░░░░░░░░░░░░░  62%  reading [12/41] md1img (40 / 64 MB)
+····································································································
+ Getting the phone into FASTBOOT mode (try 1)
+     Phone answered "READYTOO" on /dev/ttyACM0 - it is starting FASTBOOT mode.
+ Copying 41 partitions (2771 MB) into /home/sam/shomer-backups/backup-1A2B3C4D-20261103-101500.zip
+     [12/41] md1img (64 MB)
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ working...  q quit

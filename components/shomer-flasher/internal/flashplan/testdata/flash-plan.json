@@ -1,0 +1,107 @@
+{
+ "schema": 1,
+ "what": "Shomer OS flash plan: the ONE source of truth for what gets written to a phone. The flasher (Shomer-TCL/shomer-flasher, mkbundle -flash-plan) refuses to build if its partition list, order, flags or stock vbmeta checksums differ from this file; the image release and the image README print it.",
+ "device": {
+  "product": "gflip6",
+  "models": [
+   "T408DL",
+   "4058G"
+  ],
+  "builds": [
+   "KEKA",
+   "UPCI"
+  ]
+ },
+ "requires_unlocked_bootloader": true,
+ "relock": "never (a locked bootloader with this system = no boot)",
+ "write_order": [
+  {
+   "partition": "vbmeta",
+   "image": "stock/KEKA/vbmeta",
+   "sha256": "0f1c398d3a7699701616b19a8d572c99a574d8dfdcd0285ed6e767872d14d0f8",
+   "fastboot": "fastboot --disable-verity --disable-verification flash vbmeta vbmeta"
+  },
+  {
+   "partition": "vbmeta_system",
+   "image": "stock/KEKA/vbmeta_system",
+   "sha256": "c482fe430b276d3fa26d7d08a9de8f6080baf276f1953609c9850946c886aa92",
+   "fastboot": "fastboot --disable-verity --disable-verification flash vbmeta_system vbmeta_system"
+  },
+  {
+   "partition": "vbmeta_vendor",
+   "image": "stock/KEKA/vbmeta_vendor",
+   "sha256": "b77ed5c44d6046122ac5e9305ba7553499aa2eb27eecc4dfcca9ceb9f02ddb7c",
+   "fastboot": "fastboot --disable-verity --disable-verification flash vbmeta_vendor vbmeta_vendor"
+  },
+  {
+   "partition": "super",
+   "image": "super.raw (cat super.raw.gz.part-* | gunzip)",
+   "sha256": "PER_BUILD",
+   "fastboot": "fastboot flash super super.raw   (if the bootloader refuses: fastboot reboot fastboot, then the same command in fastbootd)"
+  }
+ ],
+ "vbmeta_flags": [
+  "--disable-verity",
+  "--disable-verification"
+ ],
+ "why_all_three_vbmeta": "Stock KEKA vbmeta has flags 0 and chains boot, vbmeta_system (system+product hashtrees) and vbmeta_vendor (vendor). Shomer's system and product no longer match those hashtrees. The top-level vbmeta with both flags is what turns verification and dm-verity off (libavb skips chained partitions once the top level says verification disabled); the same flags on vbmeta_system and vbmeta_vendor are redundant but harmless on an unlocked phone and match the procedure TCL Flip 2 ROM guides use (apps4flip kosher-ROM guide). The images are the untouched stock KEKA files; only fastboot sets the flag bits while writing. Decided Nov 2 2026 (full review) to end the Oct 30 disagreement between the image review (vbmeta only) and the flasher (all three).",
+ "optional": [
+  {
+   "what": "erase userdata",
+   "when": "only on a phone that was ALREADY unlocked, and only if the person says yes (unlocking itself wipes the phone)",
+   "fastboot": "fastboot erase userdata"
+  }
+ ],
+ "never_written": [
+  "boot",
+  "recovery (except the two pinned backup_first writes: recovery2 then genuine stock)",
+  "dtbo",
+  "lk",
+  "preloader",
+  "logo",
+  "md1img (modem)",
+  "nvram",
+  "nvdata",
+  "nvcfg",
+  "proinfo (IMEI)",
+  "protect1",
+  "protect2",
+  "persist",
+  "seccfg",
+  "frp",
+  "efuse",
+  "tee",
+  "metadata",
+  "vendor_boot"
+ ],
+ "after_flashing": "The phone shows the 'orange state' unlocked warning for 5 s at every boot (bootloader text, cannot be changed). Add the phone's IMEI in the admin portal before or after; it syncs at first boot.",
+ "backup_first": {
+  "what": "Backup-first (Shomer flasher 1.4.0+, on by default, --no-backup skips it): BEFORE write_order, the flasher writes neutronscott's recovery2.img to recovery, restarts into it, reads every partition (except RPMB) over adb into backup-<serial>-<date>.zip on the PC (sha256 per partition on the phone and on the PC, then the whole zip re-read), returns to fastboot and writes the GENUINE stock TCL KEKA recovery back. These two pinned writes are the ONLY writes to recovery; write_order never contains it. mkbundle refuses to build if this section is missing or names other bytes.",
+  "default": "on (--no-backup skips the backup and never touches recovery)",
+  "requires_unlocked_bootloader": true,
+  "recovery_writes": [
+   {
+    "step": 1,
+    "partition": "recovery",
+    "role": "dump",
+    "image": "recovery2.img (neutronscott, http://scottn.us/downloads/recovery2.img; same bytes as shomer-images stock/KEKA/recovery, which is NOT stock)",
+    "sha256": "394ad6bb38321565b121dec8c5dff098cd238919b766f9cbc0c994f4f0a376ac",
+    "size": 25165824,
+    "fastboot": "fastboot flash recovery recovery2.img, then fastboot reboot recovery",
+    "why": "read-only dump tool: TCL KEE7 recovery + Magisk su + busybox, adb without a prompt; fastboot boot does not work on this bootloader, so it has to be written"
+   },
+   {
+    "step": 2,
+    "partition": "recovery",
+    "role": "restore_stock",
+    "image": "stock-recovery-KEKA.img (genuine stock TCL T408DL KEKA recovery, rebuilt from stock KEKA boot + /vendor/recovery-from-boot.p by shomer-flasher tools/make-stock-recovery.py; SHA-1 40e9d0d4bc1e10efa308e9a279f70b2300ff9200 as in the phone's own install-recovery.sh; also in shomer-images stock/KEKA/recovery-genuine)",
+    "sha256": "4fa8dacf08c9fe2131616d377b6c4da5b44bb504df1c67274c37aa7c38b551d3",
+    "size": 25165824,
+    "fastboot": "fastboot flash recovery stock-recovery-KEKA.img",
+    "why": "always written back, on success and on every failure path (recovery2 gives a root shell to anyone with a USB cable); --restore-recovery does only this step"
+   }
+  ],
+  "reads": "every partition listed in /dev/block/by-name except rpmb; userdata only with --backup-userdata on a phone that was already unlocked",
+  "fail_closed": "if a critical partition (proinfo/IMEI, nvram, nvdata, nvcfg, persist, protect1/2, seccfg, md1img, boot, vendor_boot, dtbo, lk, logo, vbmeta*, super, ...) cannot be read and verified: no flash, stock recovery written back, no half zip kept"
+ }
+}

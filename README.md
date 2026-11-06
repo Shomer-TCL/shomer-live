@@ -17,7 +17,7 @@ See [BUILDING.md](docs/BUILDING.md), [TESTING.md](docs/TESTING.md), and the rele
 asset inventory. Debian package versions are recorded for each build; identical
 ISO bytes across different Debian mirror updates are not promised.
 
-The `assets` release contains the private stock/current ROM source archives.
+The dedicated `build-inputs` branch contains the private stock/current ROM source archives.
 Their checksums and provenance are pinned in `config/assets.lock.json`.
 Production private signing keys, customer data and per-device backups are never
 build inputs. Only the current Shomer release and KEKA/KEE7 stock images are bundled.

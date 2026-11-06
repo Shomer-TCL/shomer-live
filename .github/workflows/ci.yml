@@ -1,0 +1,33 @@
+name: Source and shared-engine tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: components/shomer-flasher/go.sum
+      - name: Offline-toolkit unit and negative tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Vet and race-test shared engine and both presentation paths
+        working-directory: components/shomer-flasher
+        run: |
+          go vet ./...
+          go test -race -timeout 180s ./...
+      - name: Compile the Windows native interface
+        working-directory: components/shomer-flasher
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: '0'
+        run: go build -o /tmp/shomer-windows.exe ./cmd/shomer-flasher

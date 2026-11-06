@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "downloads": [
+    {
+      "name": "platform-tools-linux.zip",
+      "url": "https://dl.google.com/android/repository/platform-tools_r37.0.1-linux.zip",
+      "sha256": "d230f13842f60f782a8645f9c813f8f845bf36089ea7289f28c48f17979313f1",
+      "group": "platform-linux",
+      "size": 9054187
+    },
+    {
+      "name": "platform-tools-windows.zip",
+      "url": "https://dl.google.com/android/repository/platform-tools_r37.0.1-win.zip",
+      "sha256": "45f4d63113e895ebde0c90f194099a4676b6ac653bd28d54314a9e022bbc1a99",
+      "group": "platform-windows",
+      "size": 8044989
+    },
+    {
+      "name": "v2024.09.17.kefs-neutron-noavb.img",
+      "url": "https://github.com/neutronscott/flip2/releases/download/v2024.09.17.kefs/neutron-noavb.img",
+      "group": "neutronscott",
+      "release": "v2024.09.17.kefs",
+      "original_name": "neutron-noavb.img",
+      "purpose": "reference; not selected automatically for flashing",
+      "compatibility": "Check upstream release and exact phone build; KEFS boot images are not approved KEKA/UPCI Shomer inputs",
+      "sha256": "49da3d491c05dc94edb2cd307cb3efcaa5c88a7343aa4ed560c883baec3ac51d",
+      "size": 25165824
+    },
+    {
+      "name": "v2024.09.17.kefs-neutron.img",
+      "url": "https://github.com/neutronscott/flip2/releases/download/v2024.09.17.kefs/neutron.img",
+      "group": "neutronscott",
+      "release": "v2024.09.17.kefs",
+      "original_name": "neutron.img",
+      "purpose": "reference; not selected automatically for flashing",
+      "compatibility": "Check upstream release and exact phone build; KEFS boot images are not approved KEKA/UPCI Shomer inputs",
+      "sha256": "31237917ef51fa6e7ee588da1cfc84bb378859de2d49681fdd4f84290841d3c1",
+      "size": 25165824
+    },
+    {
+      "name": "v2024.06.10b-autobooter.exe",
+      "url": "https://github.com/neutronscott/flip2/releases/download/v2024.06.10b/autobooter.exe",
+      "group": "neutronscott",
+      "release": "v2024.06.10b",
+      "original_name": "autobooter.exe",
+      "purpose": "reference; not selected automatically for flashing",
+      "compatibility": "Check upstream release and exact phone build; KEFS boot images are not approved KEKA/UPCI Shomer inputs",
+      "sha256": "c64505a913102609d4c369bdd18e90d1587a65496c6ac864f8b7cfc0c474f662",
+      "size": 6368696
+    },
+    {
+      "name": "v2024.06.10b-neutron-noavb.img",
+      "url": "https://github.com/neutronscott/flip2/releases/download/v2024.06.10b/neutron-noavb.img",
+      "group": "neutronscott",
+      "release": "v2024.06.10b",
+      "original_name": "neutron-noavb.img",
+      "purpose": "reference; not selected automatically for flashing",
+      "compatibility": "Check upstream release and exact phone build; KEFS boot images are not approved KEKA/UPCI Shomer inputs",
+      "sha256": "463f71b76b70fe099a41f8799495f67dfcb3efade874b4d0242e07068f534154",
+      "size": 25165824
+    },
+    {
+      "name": "v2024.06.10b-neutron.img",
+      "url": "https://github.com/neutronscott/flip2/releases/download/v2024.06.10b/neutron.img",
+      "group": "neutronscott",
+      "release": "v2024.06.10b",
+      "original_name": "neutron.img",
+      "purpose": "reference; not selected automatically for flashing",
+      "compatibility": "Check upstream release and exact phone build; KEFS boot images are not approved KEKA/UPCI Shomer inputs",
+      "sha256": "49c364368c055e79d0892d9a04e1a7885a4f84cdb669fe41fac9d1b7d4f55d1a",
+      "size": 25165824
+    },
+    {
+      "name": "v2024.06.10-autobooter.exe",
+      "url": "https://github.com/neutronscott/flip2/releases/download/v2024.06.10/autobooter.exe",
+      "group": "neutronscott",
+      "release": "v2024.06.10",
+      "original_name": "autobooter.exe",
+      "purpose": "reference; not selected automatically for flashing",
+      "compatibility": "Check upstream release and exact phone build; KEFS boot images are not approved KEKA/UPCI Shomer inputs",
+      "sha256": "057f86ac2b1501038082a499eb22b80687a2026f02cd81a18c1d565378787193",
+      "size": 6368697
+    },
+    {
+      "name": "v2024.06.10-neutron.img",
+      "url": "https://github.com/neutronscott/flip2/releases/download/v2024.06.10/neutron.img",
+      "group": "neutronscott",
+      "release": "v2024.06.10",
+      "original_name": "neutron.img",
+      "purpose": "reference; not selected automatically for flashing",
+      "compatibility": "Check upstream release and exact phone build; KEFS boot images are not approved KEKA/UPCI Shomer inputs",
+      "sha256": "0609be04601ca676085c1237b4869c2a148a5b7b49ef2d94f84cb445d188a04a",
+      "size": 25165824
+    },
+    {
+      "name": "v2-vMouse2.zip",
+      "url": "https://github.com/neutronscott/flip2/releases/download/v2/vMouse2.zip",
+      "group": "neutronscott",
+      "release": "v2",
+      "original_name": "vMouse2.zip",
+      "purpose": "reference; not selected automatically for flashing",
+      "compatibility": "Check upstream release and exact phone build; KEFS boot images are not approved KEKA/UPCI Shomer inputs",
+      "sha256": "c71ef4321eac419bd16385302b6ce4b081d2926ec6209afd20e4db69f843248d",
+      "size": 29541
+    },
+    {
+      "name": "v1-vMouse.zip",
+      "url": "https://github.com/neutronscott/flip2/releases/download/v1/vMouse.zip",
+      "group": "neutronscott",
+      "release": "v1",
+      "original_name": "vMouse.zip",
+      "purpose": "reference; not selected automatically for flashing",
+      "compatibility": "Check upstream release and exact phone build; KEFS boot images are not approved KEKA/UPCI Shomer inputs",
+      "sha256": "8a676462d0e40be77334db21ec9c980d57c7d83833f1fefd4fba853d9444e0ce",
+      "size": 29439
+    },
+    {
+      "name": "avbtool.py.base64",
+      "url": "https://android.googlesource.com/platform/external/avb/+/refs/tags/android-15.0.0_r1/avbtool.py?format=TEXT",
+      "group": "avbtool",
+      "release": "android-15.0.0_r1",
+      "sha256": "cb33e786bf015a11b1655693e461518d83d8bf0b0420fc59767ac32769c022d3",
+      "size": 272952
+    },
+    {
+      "name": "Magisk-v27.0.apk",
+      "url": "https://github.com/topjohnwu/Magisk/releases/download/v27.0/Magisk-v27.0.apk",
+      "group": "magisk",
+      "release": "v27.0",
+      "purpose": "Neutronscott build reference and magiskboot image inspection; not an automatic install step",
+      "sha256": "f511bd33d3242911d05b0939f910a3133ef2ba0e0ff1e098128f9f3cd0c16610",
+      "size": 12498796
+    }
+  ]
+}

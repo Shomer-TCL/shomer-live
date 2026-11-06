@@ -1,0 +1,254 @@
+# Builds the two one-file flashers from a Shomer image build, tests them, and
+# attaches them to a GitHub Release. The ROM never goes into this git repo:
+# it is fetched from the private Shomer-TCL/shomer-images repo with a read-only
+# deploy key (secret IMAGES_DEPLOY_KEY).
+name: build-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: "Image build folder in shomer-images/builds (pinned: the 1.4.3 image)"
+        required: true
+        default: "2026-11-05_785693c"
+      super_raw_sha256:
+        description: "sha256 of the DECOMPRESSED super partition (from the image README / build notes)"
+        required: true
+        default: "49303b828dff82aa5bdeea69f0acf8a5ceb5fdb59df1e34419cf168a407ddf0a"
+      version:
+        description: "Flasher version (no default on purpose: type it, e.g. 1.4.3)"
+        required: true
+      replace:
+        description: "REPLACE an existing PUBLISHED release with the same tag (deletes it and its tag first). Leave off: the run stops if the tag exists."
+        type: boolean
+        default: false
+      publish:
+        description: "Publish at the end (off = the release stays a DRAFT for checking)"
+        type: boolean
+        default: false
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  BUILD_ID: ${{ inputs.build_id || '2026-11-05_785693c' }}
+  SUPER_RAW_SHA: ${{ inputs.super_raw_sha256 || '49303b828dff82aa5bdeea69f0acf8a5ceb5fdb59df1e34419cf168a407ddf0a' }}
+  VERSION: ${{ inputs.version || github.ref_name }}
+  REPLACE: ${{ inputs.replace || false }}
+  # fastboot/adb: one pinned Android platform-tools release, checked by SHA-256
+  # (1.4.2 took "latest" unchecked, so two builds could carry different tools)
+  PT_VERSION: "37.0.1"
+  PT_LINUX_SHA256: "d230f13842f60f782a8645f9c813f8f845bf36089ea7289f28c48f17979313f1"
+  PT_WINDOWS_SHA256: "45f4d63113e895ebde0c90f194099a4676b6ac653bd28d54314a9e022bbc1a99"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse to overwrite a release that already exists (unless "replace" is ticked)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="flasher-${VERSION}-${BUILD_ID}"
+          echo "tag: $TAG  replace: $REPLACE"
+          test -n "$VERSION" || { echo "::error::no version given"; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            if [ "$REPLACE" != "true" ]; then echo "::error::tag $TAG already exists (a published release). Nothing was changed. Use a new version, or tick 'replace' to rebuild it on purpose."; exit 1; fi
+            echo "::warning::tag $TAG exists and 'replace' is ticked: it will be replaced"
+          fi
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft -q .isDraft > draft.txt 2>/dev/null; then
+            if [ "$(cat draft.txt)" != "true" ] && [ "$REPLACE" != "true" ]; then echo "::error::release $TAG is already published. Nothing was changed."; exit 1; fi
+          fi
+          rm -f draft.txt
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Unit tests
+        run: go test -v ./...
+      - name: Fetch the image and stock KEKA vbmeta from shomer-images (read-only key)
+        env:
+          KEY: ${{ secrets.IMAGES_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/images && chmod 600 ~/.ssh/images
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/images -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git clone --depth 1 --filter=blob:none --sparse git@github.com:Shomer-TCL/shomer-images.git images
+          cd images
+          git sparse-checkout set --no-cone "/builds/$BUILD_ID/" /stock/KEKA/vbmeta /stock/KEKA/vbmeta_system /stock/KEKA/vbmeta_vendor /stock/KEKA/SHA256SUMS /stock/KEKA/recovery /stock/KEKA/boot
+          cd "builds/$BUILD_ID"
+          ls -la
+          cat super.raw.gz.part-* > "$GITHUB_WORKSPACE/super.raw.gz"
+          grep ' super.raw.gz$' SHA256SUMS | (cd "$GITHUB_WORKSPACE" && sha256sum -c -)
+          # the build's flash plan: the one source of truth for what gets written (mkbundle checks against it)
+          test -s flash-plan.json || { echo "builds/$BUILD_ID has no flash-plan.json; refusing to build a flasher without it"; exit 1; }
+          grep ' flash-plan.json$' SHA256SUMS | sha256sum -c -
+          cp flash-plan.json "$GITHUB_WORKSPACE/flash-plan.json"
+          cd "$GITHUB_WORKSPACE/images/stock/KEKA"
+          grep -E ' (vbmeta|vbmeta_system|vbmeta_vendor)$' SHA256SUMS | sha256sum -c -
+          mkdir -p "$GITHUB_WORKSPACE/stock" && cp vbmeta vbmeta_system vbmeta_vendor "$GITHUB_WORKSPACE/stock/"
+          # backup-first: stock/KEKA/recovery is neutronscott's recovery2.img (not stock!), used only to READ the phone;
+          # stock/KEKA/boot is the real stock boot, from which the real stock recovery is rebuilt below
+          grep -E ' (recovery|boot)$' SHA256SUMS | sha256sum -c -
+          mkdir -p "$GITHUB_WORKSPACE/rec" && cp recovery "$GITHUB_WORKSPACE/rec/recovery2.img" && cp boot "$GITHUB_WORKSPACE/rec/stock-boot-KEKA.img"
+          cd "$GITHUB_WORKSPACE" && rm -rf images
+          echo "decompressed super sha256 check:"
+          echo "$SUPER_RAW_SHA  -" > raw.sha
+          gunzip -c super.raw.gz | sha256sum -c raw.sha
+      - name: Rebuild the genuine stock KEKA recovery (what the phone's own install-recovery.sh writes)
+        run: |
+          set -euo pipefail
+          pip install bsdiff4==1.4.1
+          python3 tools/make-stock-recovery.py rec/stock-boot-KEKA.img super.raw.gz rec/stock-recovery-KEKA.img
+      - name: Android platform-tools ${{ env.PT_VERSION }} (Linux + Windows, from Google, SHA-256 pinned)
+        run: |
+          set -euo pipefail
+          curl -fsSL -o ptl.zip "https://dl.google.com/android/repository/platform-tools_r${PT_VERSION}-linux.zip"
+          curl -fsSL -o ptw.zip "https://dl.google.com/android/repository/platform-tools_r${PT_VERSION}-win.zip"
+          echo "$PT_LINUX_SHA256  ptl.zip" | sha256sum -c -
+          echo "$PT_WINDOWS_SHA256  ptw.zip" | sha256sum -c -
+          mkdir -p ptl ptw && unzip -q ptl.zip -d ptl && unzip -q ptw.zip -d ptw
+          grep -qx "Pkg.Revision=$PT_VERSION" ptl/platform-tools/source.properties
+          grep -qx "Pkg.Revision=$PT_VERSION" ptw/platform-tools/source.properties
+          ptl/platform-tools/fastboot --version
+      - name: Build both flashers
+        run: |
+          set -euo pipefail
+          DUMP_RECOVERY=$PWD/rec/recovery2.img STOCK_RECOVERY=$PWD/rec/stock-recovery-KEKA.img \
+          SUPER_GZ=$PWD/super.raw.gz VBMETA_DIR=$PWD/stock PT_LINUX=$PWD/ptl/platform-tools PT_WINDOWS=$PWD/ptw/platform-tools \
+          ROM_COMMIT="${BUILD_ID##*_}" FLASH_PLAN=$PWD/flash-plan.json OUT=$PWD/dist ./build.sh
+          rm -f super.raw.gz
+          ls -la dist
+      - name: End-to-end tests of the Linux binary against mock fastboot/adb/preloader (console + TUI)
+        run: |
+          set -euo pipefail
+          python3 test/e2e.py dist/shomer-flasher-linux-x86_64
+          pip install pyte==0.8.2
+          python3 test/e2e_tui.py dist/shomer-flasher-linux-x86_64
+      - name: Linux binary --version / --info / --dry-run must show the backup-first steps
+        run: |
+          set -euo pipefail
+          B=dist/shomer-flasher-linux-x86_64
+          $B --version | tee v.txt; grep -qx "shomer-flasher $VERSION" v.txt
+          $B --info | tee i.txt
+          grep -q "recovery/dump-recovery2.img .*394ad6bb38321565b121dec8c5dff098cd238919b766f9cbc0c994f4f0a376ac" i.txt
+          grep -q "recovery/stock-recovery-KEKA.img .*4fa8dacf08c9fe2131616d377b6c4da5b44bb504df1c67274c37aa7c38b551d3" i.txt
+          grep -qx "fastboot/adb: Android platform-tools $PT_VERSION" i.txt
+          grep -q "super: [0-9]* bytes, sha256 $SUPER_RAW_SHA" i.txt
+          $B --dry-run --no-pause --workdir "$RUNNER_TEMP/sfl" | tee d.txt
+          grep -q "Backup is ON" d.txt
+          grep -q "fastboot flash recovery <backup recovery: neutronscott recovery2, sha256 394ad6bb3832" d.txt
+          grep -q "fastboot flash recovery <stock TCL KEKA recovery, sha256 4fa8dacf08c9" d.txt
+          rm -rf "$RUNNER_TEMP/sfl"
+      - name: Create a DRAFT GitHub Release with both binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="flasher-${VERSION}-${BUILD_ID}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          cd dist
+          sha256sum shomer-flasher-linux-x86_64 shomer-flasher-windows-x64.exe > SHA256SUMS
+          cat SHA256SUMS
+          {
+            echo "Shomer OS one-file flashers for TCL Flip 2 T408DL (software KEKA) and TCL 4058G (software UPCI)."
+            echo
+            echo "- Image build: \`$BUILD_ID\` (decompressed super sha256 \`$SUPER_RAW_SHA\`)"
+            echo "- **New in 1.4.3 (safety fixes, new ROM image):** (1) if you asked to save the phone data and copying it failed, the backup is now marked INCOMPLETE and the phone data is never erased without your explicit yes; (2) the IMEI partitions (proinfo, nvram, nvdata) and the other must-have partitions are required by name: if the phone does not list one, the backup is INCOMPLETE; (3) the phone's boot area (preloader) is really checked now; (4) --workdir never deletes anything the flasher did not create (it uses its own marked subfolder and removes only its own files); (5) a second copy of the flasher refuses to start while one is running; (6) the start-up disk check adds up the ROM and the backup when both go to the same disk; (7) this release workflow refuses to overwrite a published release unless told to; (8) fastboot/adb are Android platform-tools ${PT_VERSION}, pinned and SHA-256 checked (shown by --info); (9) a backup folder pasted with quotes (Explorer's Copy as path) works; (10) an adb error is never shown as the phone model (it says the connection was lost). **Never blocks on the phone's model or version (Sam's rule):** the flasher detects what it can (adb, fastboot product and bootloader facts, and the phone's own software version read out of its super during the backup). If it cannot detect it, or what it detects is not a T408DL KEKA / 4058G UPCI, it shows a clear WARNING with what it found, lets you choose KEKA or UPCI yourself, and asks \"Flash anyway as KEKA/UPCI?\" (default No; No, Enter, Cancel or closing the box stops). --variant KEKA|UPCI gives the version in advance and --force-variant answers that question yes (the warning is still shown). Checksums, an incomplete backup, two phones, disk space, USB permission, a lost connection and a locked bootloader still stop as before. Also: an empty fastboot answer is no longer misread as the next line, FAT32 + phone data refused up front, no hang on a tool that leaves a child holding its output, vbmeta re-checked right before it is written, errors before the window opens shown in a message box instead of a hidden console."
+            echo "- **Since 1.4.2:** Windows question box answers reach the flasher (were empty); KEKA/UPCI accepted in any case, with spaces, Hebrew layout; Cancel reads STOPPED."
+            echo "- **Since 1.4.1:** a full-screen TUI on Linux and a window (GUI) on Windows: checks, phone, options (backup on by default, folder, userdata), confirm screen listing exactly what is written, live progress, finish screen with the backup zip. Start it with no options (double-click on Windows). \`--cli\` (or any of \`--no-pause\`, \`--dry-run\`, \`--info\`, or no terminal) gives the plain console as before."
+            echo "- **Backup first, on by default, optional and not blocking:** every partition is read into backup-<serial>-<date>.zip on the computer (checked on the phone and on the PC, then re-read). Recovery is written twice for it: neutronscott's recovery2.img (sha256 394ad6bb...) to read, then the genuine stock TCL KEKA recovery (sha256 4fa8dacf...) back. \`--no-backup\` or the toggle skips it. **If the backup fails**, you see what failed and are asked \"continue flashing WITHOUT a backup? [y/N]\" (\`--continue-without-backup\` for unattended runs). The stock recovery is always put back first; if that fails, nothing is flashed. A partial backup is kept as ...-INCOMPLETE.zip. On a locked phone the backup holds firmware + IMEI/radio partitions, not personal data (unlocking erases it)."
+            echo "- Writes ONLY what the image build's flash-plan.json says: the two pinned backup_first recovery writes, then stock KEKA vbmeta, vbmeta_system, vbmeta_vendor with --disable-verity --disable-verification, then super. Never IMEI/modem/nvram/boot/lk/preloader/logo; never relocks. The build stops if the flasher and the plan disagree."
+            echo "- Bundles neutronscott's recovery2.img (credited; no licence stated for the image; contains Magisk su, GPL-3.0, and BusyBox, GPL-2.0 - notices in the README)."
+            echo "- Apps in the image are signed with the Shomer production key (cert SHA-256 e36f241d35d400d8e0123b1eeaf1bcbfb125873de3c2f595cfd0003d9efb27b0)."
+            echo "- Tested in CI against mock fastboot/adb/preloader (Linux console + TUI, including backup failures), unit tests on Linux and Windows, a Windows dry run, the window smoke test, the window's question boxes answered through Windows messages, and the window driven with real keyboard and mouse input on a Windows runner. **Not yet tested on a real phone.** Read the README first."
+            echo
+            echo '```'
+            cat SHA256SUMS
+            echo '```'
+          } > notes.md
+          # never silently replace a published release: only a leftover DRAFT is removed,
+          # a published one only with 'replace' ticked (checked again here)
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft -q .isDraft > draft.txt 2>/dev/null; then
+            if [ "$(cat draft.txt)" = "true" ]; then
+              gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes
+            elif [ "$REPLACE" = "true" ]; then
+              gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+            else
+              echo "::error::release $TAG is published; not replaced"; exit 1
+            fi
+          fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "Shomer flasher $VERSION (image $BUILD_ID)" --notes-file notes.md \
+            shomer-flasher-linux-x86_64 shomer-flasher-windows-x64.exe SHA256SUMS
+      - id: meta
+        run: echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+  windows-check:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Unit tests on Windows
+        run: go test ./...
+      - name: Download the .exe from the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ needs.build.outputs.tag }}" --repo "${{ github.repository }}" --pattern "*.exe" --dir dist
+      - name: Run the real .exe on Windows (payload check + unpack, no phone)
+        shell: pwsh
+        run: |
+          $exe = "dist\shomer-flasher-windows-x64.exe"
+          & $exe --version
+          & $exe --info
+          if ($LASTEXITCODE -ne 0) { throw "info failed" }
+          & $exe --dry-run --no-pause --workdir "$env:RUNNER_TEMP\sfw"
+          if ($LASTEXITCODE -ne 0) { throw "dry run failed" }
+      - name: The real .exe opens its window (GUI smoke test, screenshots kept as an artifact)
+        shell: pwsh
+        run: |
+          $exe = "dist\shomer-flasher-windows-x64.exe"
+          & $exe --gui-smoke gui-shots
+          if ($LASTEXITCODE -ne 0) { throw "gui smoke failed" }
+          $n = (Get-ChildItem gui-shots -Filter *.png).Count
+          if ($n -lt 6) { throw "only $n screenshots" }
+      - name: The real .exe's question boxes answered through Windows messages (--gui-selftest)
+        shell: pwsh
+        run: |
+          & dist\shomer-flasher-windows-x64.exe --gui-selftest
+          if ($LASTEXITCODE -ne 0) { throw "gui selftest failed" }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: The real .exe's window driven like a person (no phone; type " upci " into the version box, OK; must go on; Cancel)
+        shell: pwsh
+        run: |
+          pip install pywinauto==0.6.9 pillow
+          python test/e2e_gui_windows.py dist\shomer-flasher-windows-x64.exe gui-e2e
+          if ($LASTEXITCODE -ne 0) { throw "GUI e2e failed" }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gui-screenshots-release
+          path: |
+            gui-shots/
+            gui-e2e/
+            dist/*.log
+
+  publish:
+    needs: [build, windows-check]
+    if: ${{ inputs.publish || github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the release (it stays private because the repo is private)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "${{ needs.build.outputs.tag }}" --repo "${{ github.repository }}" --draft=false --latest

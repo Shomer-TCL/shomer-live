@@ -1,0 +1,79 @@
+SHOMER LIVE — START HERE
+
+This USB runs a Linux desktop without installing Linux on the PC.
+It does not automatically mount or change the PC's internal disks.
+No Internet connection is required. There are no first-run package downloads.
+
+1. Open Shomer Workbench.
+2. Prefer the read-only MTKClient BROM backup, if your handset exposes BROM.
+3. Select a writable mounted backup disk. Never save the only backup in live RAM.
+4. Verify the backup's sizes, SHA256SUMS and backup-info.json before changing the phone.
+5. If BROM is unavailable, read the recovery fallback limits before selecting Shomer GUI.
+6. Review the exact image release and phone identity, then the planned partition writes.
+7. Only confirm installation when those facts match your handset.
+
+BACKUP FIRST
+MTKClient is preinstalled with its GUI, Python dependencies, USB access rules,
+loaders and payloads. A BROM read may still be blocked by the phone. The guided
+route does not unlock, erase or automatically fall back to recovery.
+Connect a powered-off handset using the documented key sequence. The guided
+helper requires exactly one MediaTek 0e8d:0003 BROM device and checks the reported
+eMMC user, boot1 and boot2 sizes. It reads each area twice and compares hashes.
+RPMB, efuses and secure-world secrets are excluded. Read logs when access fails.
+
+RECOVERY FALLBACK
+Unlocking a locked bootloader erases existing personal data. Copy accessible
+contacts/photos/messages first. The rooted recovery has to be written before it
+can read the phone; the original recovery therefore is not preserved by this
+route. The stock recovery supplied with this build is kept separately.
+The flasher verifies recovery partition size and bootloader fastboot mode before
+writing, verifies recovery ADB before reading, and restores genuine stock recovery.
+If a write fails, its contents can be uncertain. Keep the log and stop dependent writes.
+
+IDENTITY AND MODES
+Supported starting builds: T408DL KEKA and the corresponding 4058G UPCI variant.
+Product gflip6 by itself does not establish model/build compatibility.
+Detected identity and entered identity are shown separately. Unsupported queries
+remain unknown; they are not treated as proof of a particular mode.
+Recovery/vbmeta use verified bootloader fastboot. Super uses verified fastbootd.
+The program verifies transitions instead of assuming a reboot command succeeded.
+
+WHERE THINGS ARE
+~/TCL-Flip2 points to the complete toolkit at /opt/shomer/TCL-Flip2.
+Images/INDEX.json identifies rooted vs stock recovery and version restrictions.
+Tools/MTKClient/source contains the full pinned source, loaders and payloads.
+Tools/Neutronscott contains reference source and Magisk 27.0 used by its build recipe.
+Images/Neutronscott contains the downloaded upstream release images.
+Checksums-and-manifests records sources, exact files and installed packages.
+Licenses-and-source and upstream source directories contain licenses/source.
+
+KEEP DATA AFTER SHUTDOWN
+Choose a folder on a mounted physical backup drive; the launcher refuses RAM,
+read-only live media and loop-backed temporary filesystems. Use the file manager
+to mount a chosen external drive explicitly. NTFS, exFAT and ext4 are supported.
+Backups contain the phone's identity/calibration and may contain private data.
+Keep them private and never restore another phone's identity/calibration partitions.
+
+OPTIONAL PERSISTENCE
+Use a separate deliberately prepared Linux ext4 partition labeled
+SHOMER_PERSISTENCE with persistence.conf containing the single line:
+/home/shomer union
+The boot configuration enables persistence when that labeled partition is present.
+Do not repartition a disk casually; doing so can erase it. A separate mounted
+backup drive is sufficient and does not require configuring live persistence.
+
+RUFUS
+Use the built release ISO. If split, first run the supplied Join-ISO.ps1 in the
+download directory to reconstruct and verify the ISO. In Rufus choose the USB
+device carefully, select the ISO and choose DD mode when offered. Writing the USB
+erases that USB. Boot it using the PC firmware's boot menu. BIOS/UEFI VM tests are
+recorded separately from physical PC/Secure Boot tests; consult the release report.
+
+IMPORTANT LIMITS
+An encrypted userdata image is not a promise that contacts/files can be recovered.
+No mass-restore command is supplied. Whole storage/GPT/boot-area restoration needs
+an exact handset-specific plan. Never relock the bootloader with modified Shomer OS.
+MTKClient's advanced GUI includes write/erase features; opening it is a deliberate
+advanced choice, not the guided read-only backup route.
+
+No production private keys are included or needed to install an existing ROM.

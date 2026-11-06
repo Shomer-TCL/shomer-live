@@ -17,6 +17,9 @@ def geometry(output):
         if m:result[key]=int(m.group(1),16)
     if set(result)!={'user','boot1','boot2'} or any(n<=0 for n in result.values()):
         raise ValueError('No complete positive eMMC geometry reported; no backup completeness claim is possible')
+    for number in range(1,5):
+        m=re.search(r'EMMC\s+GP'+str(number)+r'\s+Size:\s*(0x[0-9a-f]+)',output,re.I)
+        if m and int(m.group(1),16)>0:result['gp'+str(number)]=int(m.group(1),16)
     return result
 
 def brom_present():
@@ -37,7 +40,7 @@ def main():
     out=pathlib.Path(args.destination)/('TCL-BROM-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     out.mkdir(mode=0o700,exist_ok=False)
     info={'complete':False,'method':'MTKClient read-only BROM storage commands','entries':[],
-          'excluded':['RPMB','efuses','secure-world secrets'],'verification':'Two independent reads per area with equal SHA-256 and expected geometry; not an automatic restore guarantee'}
+          'excluded':['RPMB','efuses','secure-world secrets'],'verification':'Two independent reads per reported nonempty eMMC area with equal SHA-256 and expected geometry; not an automatic restore guarantee'}
     def save(): (out/'backup-info.json').write_text(json.dumps(info,indent=2)+'\n')
     save()
     def run(label,argv):
@@ -62,7 +65,7 @@ def main():
         info['entries'].append({'file':final.name,'size':size,'sha256':digest});save()
     (out/'SHA256SUMS').write_text(''.join(e['sha256']+'  '+e['file']+'\n' for e in info['entries']))
     info['complete']=True;save()
-    print('BROM BACKUP COMPLETE for eMMC user, boot1 and boot2 only. Keep it private:',out)
+    print('BROM BACKUP COMPLETE for recorded eMMC areas only. Keep it private:',out)
 if __name__=='__main__':
     try: main()
     except (Exception,KeyboardInterrupt) as e: print('STOP: '+str(e),file=sys.stderr);sys.exit(1)

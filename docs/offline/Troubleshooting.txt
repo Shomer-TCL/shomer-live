@@ -1,0 +1,37 @@
+TROUBLESHOOTING
+
+Unknown command at Writing recovery:
+The USB download may have succeeded while the phone rejected the actual write.
+Do not treat that as a successful flash or test random other partitions.
+Read fastboot --version; getvar product; getvar is-userspace; getvar unlocked;
+getvar version-bootloader; getvar partition-size:recovery. Keep the full log.
+An unsupported is-userspace variable is inconclusive; this flasher stops writes.
+
+Bootloader fastboot vs fastbootd:
+Both can appear in fastboot devices. is-userspace: no identifies bootloader;
+yes identifies fastbootd. Unknown does not identify either.
+Neutronscott's preloader handshake catches bootloader fastboot while powering on.
+fastboot reboot fastboot requests recovery's fastbootd, then it must be verified.
+adb reboot bootloader may boot normal Android on this handset; use the documented
+powered-off preloader route if that happens. Do not assume a transition occurred.
+
+BROM not found / MTKClient authentication failure:
+Check physical cable, power-off/key sequence, USB enumeration and the tool log.
+The phone may not expose BROM or accept the available download agent.
+The guided backup stops and does not unlock or flash recovery automatically.
+
+Backup incomplete:
+Do not proceed on a false success assumption. Preserve partial files and logs.
+Recovery backup requires successful stock recovery restore before other writes.
+If restore failed, the recovery contents are uncertain and may still provide root.
+Keep the phone private and diagnose the restore route first.
+
+Backup location refused:
+The live RAM filesystem, ISO filesystem and temporary loop-backed storage do not
+retain data after shutdown. Mount a chosen physical drive and select a folder there.
+For FAT32 use another filesystem when a dump or backup ZIP exceeds 4 GiB.
+
+References bundled by provenance:
+https://github.com/neutronscott/flip2/wiki
+https://forums.apps4flip.com/d/693-instructions-for-installing-a-kosher-rom-on-tcl-flip2classic-t408dl
+https://github.com/jackharvest/tcl-flip-macos-unlock/blob/main/docs/recovery-and-dump.md

@@ -1,0 +1,36 @@
+# Renders the README screenshots of the Windows window on a Windows runner and commits
+# them as docs/gui-*.png to the pushed docs-shots/* branch. Never releases anything.
+name: docs-screenshots
+
+on:
+  push:
+    branches: ["docs-shots/**"]
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Open the window with example data and save every screen
+        shell: pwsh
+        run: |
+          $env:CGO_ENABLED = "0"
+          go build -ldflags "-X main.version=1.4.2" -o sf.exe ./cmd/shomer-flasher
+          if ($LASTEXITCODE -ne 0) { throw "build failed" }
+          & .\sf.exe --gui-smoke docs
+          if ($LASTEXITCODE -ne 0) { throw "gui smoke failed" }
+          Remove-Item sf.exe
+      - name: Commit the screenshots
+        shell: bash
+        run: |
+          git config user.name "shomer-ci"
+          git config user.email "ci@shomer.invalid"
+          git add docs/gui-*.png
+          git commit -m "docs: Windows window screenshots (rendered by CI with --gui-smoke)" || echo "no change"
+          git push origin HEAD:${GITHUB_REF_NAME}

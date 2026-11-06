@@ -1,0 +1,15 @@
+[Unit]
+Description=Offline ISO validation (explicit CI kernel parameter only)
+After=display-manager.service live-config.service
+ConditionVirtualization=qemu
+ConditionPathExists=/sys/firmware/qemu_fw_cfg/by_name/opt/shomer/selftest/raw
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/shomer-boot-test
+TimeoutStartSec=1500
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

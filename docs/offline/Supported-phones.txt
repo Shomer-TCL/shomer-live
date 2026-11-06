@@ -1,0 +1,17 @@
+SUPPORTED SHOMER STARTING BUILDS
+
+TCL Flip 2 T408DL on KEKA; corresponding 4058G UPCI variant per the pinned flash plan.
+Check the actual handset About screen and read-back identity. A typed version is
+not detected evidence. No 4058W / Flip Go or unrelated 4058G build is approved here.
+
+KEE7 stock files are bundled for research/inspection, not approval to install the
+KEKA-based Shomer image on an arbitrary older handset without normalization/testing.
+Neutronscott images are version-specific. A KEFS boot image is not an approved
+Shomer KEKA/UPCI installation input. Reference tools never select these automatically.
+
+BROM accessibility varies with firmware/hardware. The cited single UPCI handset
+report could not enter BROM, while community reports describe other workflows.
+No general claim that every Flip 2 accepts MTKClient is made.
+
+Real phone installation, radio, emergency calling, camera, reset and rollback tests
+need designated physical units. The release test report identifies unrun hardware checks.

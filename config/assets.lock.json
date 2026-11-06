@@ -8,7 +8,59 @@
       "size": 837183056,
       "source": "Shomer-TCL/shomer-images",
       "source_commit": "8e8e7f5d4e0f814b7acee5f764235938162ad2cd",
-      "source_path": "stock/KEKA"
+      "source_path": "stock/KEKA",
+      "parts": [
+        {
+          "name": "stock-KEKA.tar.gz.part-000",
+          "sha256": "304fb1cf46907ee2f04ea84d14623f7f8a9779c23af726513770cd9187fa659f",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEKA.tar.gz.part-001",
+          "sha256": "934d21f005fa5ef1ee9a586ccaacb0fb18ada7138529c25855258c2fd1d799cd",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEKA.tar.gz.part-002",
+          "sha256": "b11c17aa2a3eba32f56d5fe1bc300f238a35efe9d03b3859fca158dc63918733",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEKA.tar.gz.part-003",
+          "sha256": "e091c405eea2da54e57c7295dc96c2e9b71f254e5ad7870d7b033163bf7ed17f",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEKA.tar.gz.part-004",
+          "sha256": "b3602a24bc8e11b4acf4e60aee9bb5e53d9efd7ad2a1a075a3701fe23a2eb942",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEKA.tar.gz.part-005",
+          "sha256": "0efd3f8e82ff396ac14f80a2b3e4e0ba1e3fad7ca36280bb8c0ad0940bce9597",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEKA.tar.gz.part-006",
+          "sha256": "ced5236a8a81422281f37e0259c1793c562c0c8c8c54a7695e11e149866542b0",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEKA.tar.gz.part-007",
+          "sha256": "53e48afcd1054932751d8c0b217d8c4564070808c42c794904c4c422847d5709",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEKA.tar.gz.part-008",
+          "sha256": "dbaf2ffcb6d3da3600427fdc006e1f6c7246fde64c04a6af315d133e468ebf24",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEKA.tar.gz.part-009",
+          "sha256": "6dd62100f538e0c10633e36a5216de7d50d988c19b0aad75c9041e42b0c2a299",
+          "size": 72183056
+        }
+      ]
     },
     {
       "name": "stock-KEE7.tar.gz",
@@ -16,7 +68,59 @@
       "size": 812633489,
       "source": "Shomer-TCL/shomer-images",
       "source_commit": "8e8e7f5d4e0f814b7acee5f764235938162ad2cd",
-      "source_path": "stock/KEE7"
+      "source_path": "stock/KEE7",
+      "parts": [
+        {
+          "name": "stock-KEE7.tar.gz.part-000",
+          "sha256": "62944e2593cfef508c148eefb9d6118f536cf20110c07a2220f9598677e9c783",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEE7.tar.gz.part-001",
+          "sha256": "51bcaf24c4c8dbf5bb3a64ea3c8bd9619be5c2b612bda2ad5e5b1be7b5f66177",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEE7.tar.gz.part-002",
+          "sha256": "fde56e76bbb33ef73f26ff132a1817d3888554edd4b7e5812c49a0a2cbf81226",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEE7.tar.gz.part-003",
+          "sha256": "0b40332aeeb59f097edd0f1eceb0c606c051f7edd092c19a19c8e8f96be0d8f9",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEE7.tar.gz.part-004",
+          "sha256": "1f69c079ab9927a0e63bb4ff3ce0ec9600842fdaea7b4b829a8f76f56c79ae93",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEE7.tar.gz.part-005",
+          "sha256": "8d62c44fab3ad7a98ffeef26d2850a1c86baa767908b5aa5e39925ff63e8fa1b",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEE7.tar.gz.part-006",
+          "sha256": "c287c9542e15837b3af20d5e52610f915257421143c092e45ddcca47b8558c5b",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEE7.tar.gz.part-007",
+          "sha256": "def11ea58932498a645ce1fc9115df72d0f087f5fc7a0f49ecf5e30d3492ac1d",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEE7.tar.gz.part-008",
+          "sha256": "67ca38470c082681ebda0f0dd82bf9bb66ea24fb68e4c7ea4e5f557e29cabec1",
+          "size": 85000000
+        },
+        {
+          "name": "stock-KEE7.tar.gz.part-009",
+          "sha256": "3ec70dc2c8596384adf4dc076c2c9baa12a00deb755170351635598f4897a0a0",
+          "size": 47633489
+        }
+      ]
     },
     {
       "name": "shomer-current.tar.gz",
@@ -24,7 +128,55 @@
       "size": 724997699,
       "source": "Shomer-TCL/shomer-images",
       "source_commit": "8e8e7f5d4e0f814b7acee5f764235938162ad2cd",
-      "source_path": "builds/2026-11-05_785693c"
+      "source_path": "builds/2026-11-05_785693c",
+      "parts": [
+        {
+          "name": "shomer-current.tar.gz.part-000",
+          "sha256": "68ea6ed0721246e891bcd0a84dd279458eb4f5a9dd8492f5934ac0c0eca0a38f",
+          "size": 85000000
+        },
+        {
+          "name": "shomer-current.tar.gz.part-001",
+          "sha256": "888a306676ca8dcc2bb35ee419953937343182d3575b9dc0149744384e4f805b",
+          "size": 85000000
+        },
+        {
+          "name": "shomer-current.tar.gz.part-002",
+          "sha256": "dd9ff2d494ab64b80d84ab07a1c1fb1b17c542cdc562614e35c4686c3c395fd5",
+          "size": 85000000
+        },
+        {
+          "name": "shomer-current.tar.gz.part-003",
+          "sha256": "3905953c5e7f90e208b2db63d563e5875ea1ea91a7418d98e58c434a40cfe668",
+          "size": 85000000
+        },
+        {
+          "name": "shomer-current.tar.gz.part-004",
+          "sha256": "e7593dea19e1704cb358b24b410b9dc0e589d40b4da035713398459da0dc2938",
+          "size": 85000000
+        },
+        {
+          "name": "shomer-current.tar.gz.part-005",
+          "sha256": "3d3067c1c14b8fc9cc12d98b7de9da8756b8e9418de35ea6cf01d7c6fb737e98",
+          "size": 85000000
+        },
+        {
+          "name": "shomer-current.tar.gz.part-006",
+          "sha256": "5de3f31fb7488da362069c9a58f9c8dcf0042cdf01266a29481414a5774fe0fd",
+          "size": 85000000
+        },
+        {
+          "name": "shomer-current.tar.gz.part-007",
+          "sha256": "af5d1225766676f1c939d4dc1f48534c19d9c24068ed20b2bec65e2cd3857c59",
+          "size": 85000000
+        },
+        {
+          "name": "shomer-current.tar.gz.part-008",
+          "sha256": "5ca9056233a258002ebc00177196a2f469ea16582f8a8e649eb72d4568445f46",
+          "size": 44997699
+        }
+      ]
     }
-  ]
+  ],
+  "git_ref": "aa5d06b69346b0aaa109ee7e9cf835407d3b80e0"
 }

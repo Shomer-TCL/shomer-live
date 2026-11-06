@@ -1,0 +1,18 @@
+#!/opt/shomer/TCL-Flip2/Tools/MTKClient/venv/bin/python
+"""Linux standalone TCL preloader FASTBOOT handshake. No storage write commands."""
+import argparse,time,serial,serial.tools.list_ports
+ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--timeout',type=int,default=180);a=ap.parse_args()
+print('Phone OFF, battery installed: unplug/replug USB now. Ctrl+C cancels.')
+deadline=time.monotonic()+a.timeout
+try:
+    while time.monotonic()<deadline:
+        for p in serial.tools.list_ports.comports():
+            if p.vid!=0x0e8d or p.pid!=0x2000:continue
+            try:
+                with serial.Serial(p.device,115200,timeout=.5,write_timeout=.5) as s:
+                    s.write(b'FASTBOOT')
+                    if s.read(8)==b'READYTOO':print('FASTBOOT accepted. Verify fastboot devices and getvar is-userspace.');raise SystemExit(0)
+            except (OSError,serial.SerialException):pass
+        time.sleep(.1)
+except KeyboardInterrupt:raise SystemExit('Cancelled; no partition write was sent')
+raise SystemExit('No successful preloader handshake. Check power-off state, cable and USB access.')

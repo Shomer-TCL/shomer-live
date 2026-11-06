@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "components": [
+    {
+      "name": "mtkclient",
+      "repository": "https://github.com/bkerler/mtkclient",
+      "commit": "118a000a83ea31c4f427fe5225abfe964546e05e"
+    },
+    {
+      "name": "neutronscott",
+      "repository": "https://github.com/neutronscott/flip2",
+      "commit": "26b2790a358fa3fce2b02fb251d02139c23e62d3"
+    },
+    {
+      "name": "shomer-image-tools",
+      "repository": "https://github.com/Shomer-TCL/shomer-rom",
+      "commit": "785693cf8a4b3942eeddb068d9aad43d9089cf98"
+    },
+    {
+      "name": "lpunpack",
+      "repository": "https://github.com/unix3dgforce/lpunpack",
+      "commit": "c59b8f3b069c5a8aa438a049fa4a091177172434"
+    },
+    {
+      "name": "shomer-flasher",
+      "repository": "https://github.com/Shomer-TCL/shomer-flasher",
+      "commit": "51c0f42e2f3c7e3e007d891f94b27f7856b9883d",
+      "branch": "feat/linux-live-iso"
+    }
+  ]
+}

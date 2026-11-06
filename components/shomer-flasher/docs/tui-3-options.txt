@@ -1,0 +1,34 @@
+ SHOMER flasher 1.4.1                       Checks > Phone > Options > Confirm > Writing > Finished
+ Options
+
+ Phone: model T408DL, product gflip6, serial 1A2B3C4D, software KEKA, bootloader LOCKED
+
+ Backup the phone first           [x] ON
+ Backup folder                    /home/sam/shomer-backups
+ Include phone data (userdata)    [ ] OFF
+ Erase phone data after flashing  [ ] OFF
+
+    Continue: review
+
+ Copies every partition into a zip on this computer before flashing. Recommended. If it fails you
+can still flash without it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ Up/Down move  Enter change/continue  Esc back  q quit

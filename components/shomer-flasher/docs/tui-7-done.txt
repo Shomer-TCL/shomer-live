@@ -1,0 +1,34 @@
+ SHOMER flasher 1.4.1                       Checks > Phone > Options > Confirm > Writing > Finished
+ Finished
+
+ DONE - Shomer OS has been written.
+
+ INCOMPLETE backup (some partitions are missing):
+   /home/sam/shomer-backups/backup-1A2B3C4D-20261103-101500-INCOMPLETE.zip
+
+ The backup failed and you chose to flash without it: these partitions could not be copied and
+checked: nvram. The backup is INCOMPLETE
+
+ What happens now:
+ - The phone shows an 'orange state' warning for a few seconds at every start. Normal.
+ - The FIRST start takes up to 5-10 minutes. Leave it alone.
+ - Add this phone's IMEI in the Shomer admin portal (dial *#06# or see the sticker).
+ - Connect it to the internet (SIM data or Wi-Fi) so it can fetch its level.
+
+ Log file: /home/sam/Downloads/shomer-flasher-20261103-101500.log
+
+
+
+
+
+
+
+
+
+
+
+
+
+  [ Close ]
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ Enter or q close

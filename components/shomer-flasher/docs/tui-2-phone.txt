@@ -1,0 +1,34 @@
+ SHOMER flasher 1.4.1                       Checks > Phone > Options > Confirm > Writing > Finished
+ The phone
+
+╭──────────────────────╮
+│ Phone found          │
+│ Model:      T408DL   │
+│ Product:    gflip6   │
+│ Serial:     1A2B3C4D │
+│ Software:   KEKA     │
+│ Bootloader: LOCKED   │
+╰──────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  [ Continue: options ]
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ Enter continue  q quit

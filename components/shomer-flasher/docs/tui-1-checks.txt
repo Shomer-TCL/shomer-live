@@ -1,0 +1,34 @@
+ SHOMER flasher 1.4.1                       Checks > Phone > Options > Confirm > Writing > Finished
+ Checks before we start
+
+ [ OK ] Permission to use USB  running as root (sudo)
+ [WARN] ModemManager  running - it can grab the phone's port while we try to catch it
+        In another terminal:  sudo systemctl stop ModemManager   (start it again after flashing)
+ [ OK ] Free disk for the ROM  41230 MB free in /home/sam/shomer-flasher-work (needs 2248 MB)
+ [ OK ] Free disk for the backup  41230 MB free in /home/sam/shomer-backups (needs about 2900 MB)
+ [ OK ] ROM inside this program  every file matches its SHA-256
+
+ Next: the program helps you get the phone into fastboot mode. Nothing is written until you
+confirm.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  [ Continue: find the phone ]
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ Enter continue  q quit

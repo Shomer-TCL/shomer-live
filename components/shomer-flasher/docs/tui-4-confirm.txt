@@ -1,0 +1,34 @@
+ SHOMER flasher 1.4.1                       Checks > Phone > Options > Confirm > Writing > Finished
+ Confirm: this is exactly what will be written
+
+ Phone: model T408DL, product gflip6, serial 1A2B3C4D, software KEKA, bootloader LOCKED
+
+ These steps run, in this order. Only the partitions named here are written:
+  1. Unlock the bootloader (press Volume Up on the phone) - ERASES all data on the phone
+       fastboot flashing unlock
+  2. Backup 1/3: write the reading recovery (neutronscott's recovery2)
+       fastboot flash recovery <backup recovery: neutronscott recovery2, sha256 394ad6bb3832...>
+       fastboot reboot recovery
+  3. Backup 2/3: copy every partition except userdata into a zip in /home/sam/shomer-backups (read
+only)
+       adb exec-out "su -c 'dd if=/dev/block/by-name/<each partition>'"  -> backup-<serial>-
+<date>.zip in /home/sam/shomer-backups (read only)
+       adb reboot bootloader
+  4. Backup 3/3: write the stock TCL recovery back (always, even if the backup fails)
+       fastboot flash recovery <stock TCL KEKA recovery, sha256 4fa8dacf08c9...>
+  5. Write vbmeta (stock KEKA, verification off)
+       fastboot --disable-verity --disable-verification flash vbmeta <stock KEKA vbmeta>
+  6. Write vbmeta_system (stock KEKA, verification off)
+       fastboot --disable-verity --disable-verification flash vbmeta_system <stock KEKA
+vbmeta_system>
+  7. Write vbmeta_vendor (stock KEKA, verification off)
+       fastboot --disable-verity --disable-verification flash vbmeta_vendor <stock KEKA
+vbmeta_vendor>
+  8. Write super - Shomer OS 2026-11-05_785693c (2048 MB)
+       fastboot flash super <Shomer OS 2026-11-05_785693c, 2048 MB>
+  9. Restart the phone
+ ... 9 more lines: PgDn/PgUp to scroll
+
+  [ FLASH NOW ]      Back
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ Left/Right choose  Enter OK  Up/Down/PgDn scroll  Esc back  q quit

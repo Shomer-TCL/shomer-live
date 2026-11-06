@@ -1,0 +1,178 @@
+name: Build, offline-test and release ISO
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New release version (without v)
+        required: true
+        default: 0.1.0-alpha.1
+      publish:
+        description: Publish the tested prerelease
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: shomer-live-release
+  cancel-in-progress: false
+env:
+  VERSION: ${{ inputs.version }}
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate version and preserve existing releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -c 'import os,re; assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?",os.environ["VERSION"])'
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release exists; use a new version. Nothing is overwritten.' >&2; exit 1
+          fi
+      - name: Free unused preinstalled runner toolchains
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h .
+      - name: Install build, GUI and VM test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libgtk-3-dev xvfb xauth xdotool openbox imagemagick python3-pip python3-venv python3-pyte qemu-system-x86 ovmf e2fsprogs
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: components/shomer-flasher/go.sum
+      - name: Unit, negative, race and vet gates
+        run: |
+          python3 -m unittest discover -s tests -v
+          cd components/shomer-flasher
+          go vet ./...
+          go test -race -timeout 180s ./...
+      - name: Read pinned private firmware commit
+        id: inputs
+        run: echo "ref=$(python3 -c 'import json;print(json.load(open("config/assets.lock.json"))["git_ref"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.inputs.outputs.ref }}
+          path: build/input-chunks
+          persist-credentials: false
+      - name: Stage verified offline files and both native flashers
+        run: python3 scripts/stage.py --inputs build/input-chunks
+      - name: Test actual CLI and terminal against mock phones
+        run: |
+          source_dir="$PWD/components/shomer-flasher"
+          python3 "$source_dir/test/e2e.py" "$PWD/build/fixture/shomer-flasher-test"
+          python3 "$source_dir/test/e2e_tui.py" "$PWD/build/fixture/shomer-flasher-test" build/tui-captures
+      - name: Test native GTK states and keyboard interaction
+        run: |
+          build/root/opt/shomer/TCL-Flip2/Shomer-Flasher/shomer-flasher --version
+          xvfb-run -a build/root/opt/shomer/TCL-Flip2/Shomer-Flasher/shomer-flasher --gui-smoke build/gtk-captures
+          xvfb-run -a sh -c 'openbox >/tmp/shomer-openbox.log 2>&1 & python3 components/shomer-flasher/test/e2e_gui_linux.py build/fixture/shomer-flasher-test build/gtk-e2e'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-testing
+          compression-level: 0
+          path: |
+            dist/shomer-flasher-windows-x64.exe
+            build/fixture/shomer-flasher-test.exe
+      - name: Remove redundant generated staging inputs
+        run: rm -rf build/input-chunks build/archives build/inputs build/super.raw
+      - name: Build Debian BIOS/UEFI hybrid ISO
+        run: bash scripts/build-iso.sh
+      - name: Boot actual ISO without networking and verify retained backups
+        run: python3 scripts/test-iso.py build/live/live-image-amd64.hybrid.iso --out dist/boot-tests
+      - name: Prepare release parts, checksums, manifests and evidence
+        run: |
+          python3 scripts/package-release.py build/live/live-image-amd64.hybrid.iso --version "$VERSION"
+          cp dist/shomer-flasher-windows-x64.exe dist/release/
+          cp dist/boot-tests/test-report.json dist/release/
+          cp build/root/opt/shomer/TCL-Flip2/Checksums-and-manifests/*.json dist/release/
+          cp docs/TESTING.md dist/release/VALIDATION.md
+          cp docs/RELEASE-NOTES.md dist/release/RELEASE-NOTES.md
+          (cd dist/release && sha256sum shomer-flasher-windows-x64.exe > WINDOWS.sha256)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-test-evidence
+          path: |
+            dist/boot-tests/*.log
+            dist/boot-tests/*.json
+            build/gtk-captures/
+            build/gtk-e2e/
+            build/tui-captures/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shomer-live-release
+          compression-level: 0
+          path: dist/release/
+  windows:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: components/shomer-flasher/go.sum
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-testing
+          path: artifacts
+      - name: Native Windows unit tests
+        working-directory: components/shomer-flasher
+        run: go test -timeout 180s ./...
+      - name: Render all Windows GUI states and test dialogs offline
+        shell: pwsh
+        run: |
+          $binary = (Resolve-Path artifacts/dist/shomer-flasher-windows-x64.exe).Path
+          New-NetFirewallRule -DisplayName ShomerOfflineTest -Direction Outbound -Program $binary -Action Block | Out-Null
+          & $binary --gui-smoke windows-captures
+          if ($LASTEXITCODE -ne 0) { throw 'GUI rendering failed' }
+          & $binary --gui-selftest
+          if ($LASTEXITCODE -ne 0) { throw 'GUI dialog selftest failed' }
+          if ((Get-ChildItem windows-captures -Filter *.png).Count -lt 6) { throw 'Missing GUI captures' }
+      - name: Drive actual Windows GUI input
+        shell: pwsh
+        run: |
+          pip install pywinauto==0.6.9 pillow==11.3.0
+          $fixture = (Resolve-Path artifacts/build/fixture/shomer-flasher-test.exe).Path
+          New-NetFirewallRule -DisplayName ShomerFixtureOfflineTest -Direction Outbound -Program $fixture -Action Block | Out-Null
+          python components/shomer-flasher/test/e2e_gui_windows.py $fixture windows-e2e
+          if ($LASTEXITCODE -ne 0) { throw 'Windows GUI interaction failed' }
+      - name: Verify Windows ISO reassembly helper
+        shell: pwsh
+        run: |
+          python scripts/package-release.py README.md --version 0.0.0-test --out join-test
+          & join-test/Join-ISO.ps1
+          if (-not (Test-Path join-test/shomer-live-0.0.0-test-amd64.iso)) { throw 'Windows reassembly failed' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-test-evidence
+          path: |
+            windows-captures/
+            windows-e2e/
+          if-no-files-found: ignore
+  release:
+    needs: [build, windows]
+    if: inputs.publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: shomer-live-release
+          path: release
+      - name: Publish tested prerelease without overwriting a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "Shomer Live $VERSION — offline TCL Flip 2 workbench" --notes-file release/RELEASE-NOTES.md release/*
