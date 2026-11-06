@@ -11,7 +11,7 @@ chroot installs MTKClient dependencies exclusively from the wheelhouse.
 2. Check out `config/assets.lock.json:git_ref` from this same private repository
    into `build/input-chunks`. This branch contains large private firmware inputs.
 3. Run `python3 scripts/stage.py --inputs build/input-chunks`.
-4. Run `sudo bash scripts/configure-live.sh`, then `cd build/live && sudo lb build`.
+4. Run `bash scripts/build-iso.sh`; it configures and builds inside the pinned privileged Debian build container.
 5. Run `python3 scripts/test-iso.py build/live/live-image-amd64.hybrid.iso`.
 6. Package with `python3 scripts/package-release.py <ISO> --version <VERSION>`.
 

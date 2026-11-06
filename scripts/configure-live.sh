@@ -31,6 +31,9 @@ cat > /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/thunar.xml <<'XML'
 XML
 cp /usr/share/applications/shomer-workbench.desktop /etc/skel/Desktop/
 chmod +x /etc/skel/Desktop/shomer-workbench.desktop
+# Debian's LXPolKit autostart excludes Xfce, whose full desktop normally supplies
+# another agent. This minimal desktop deliberately uses the lightweight LX agent.
+sed -i '/^NotShowIn=/d' /etc/xdg/autostart/lxpolkit.desktop
 ln -sf /opt/shomer/TCL-Flip2 /etc/skel/TCL-Flip2
 mkdir -p /etc/systemd/system
 for service in ModemManager.service apt-daily.service apt-daily-upgrade.service NetworkManager.service systemd-networkd.service; do ln -sf /dev/null /etc/systemd/system/$service; done

@@ -8,7 +8,11 @@ Phone writes require the flasher's review and explicit confirmation. Prefer the
 read-only MTKClient BROM backup route when the particular phone exposes BROM;
 recovery backup is a separate fallback and overwrites recovery before reading.
 
-## Build
+## Download
+
+Get the prebuilt ISO and Windows executable from [GitHub Releases](https://github.com/Shomer-TCL/shomer-live/releases). No local build is required.
+
+## Maintainer build
 
 The GitHub Actions release workflow assembles all dependencies on an online
 runner, builds the BIOS/UEFI hybrid ISO, boots it without a network card, runs the

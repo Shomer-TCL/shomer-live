@@ -33,6 +33,12 @@ for i in $(seq 1 120); do
 done
 export DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0
 xdpyinfo >/dev/null
+for i in $(seq 1 60); do
+  if pgrep -u shomer -x xfce4-session >/dev/null && pgrep -u shomer -x lxpolkit >/dev/null; then break; fi
+  sleep 1
+done
+pgrep -u shomer -x xfce4-session
+pgrep -u shomer -x lxpolkit
 test "$(find /sys/class/net -mindepth 1 -maxdepth 1 ! -name lo | wc -l)" -eq 0
 shomer-check-destination /mnt/shomer-test
 if shomer-check-destination /tmp; then echo 'RAM destination was incorrectly accepted'; exit 1; fi
