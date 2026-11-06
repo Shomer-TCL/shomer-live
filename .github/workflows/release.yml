@@ -83,6 +83,13 @@ jobs:
         run: rm -rf build/input-chunks build/archives build/inputs build/super.raw
       - name: Build Debian BIOS/UEFI hybrid ISO
         run: bash scripts/build-iso.sh
+      - name: Retain the built candidate for test diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: shomer-live-candidate
+          compression-level: 0
+          retention-days: 1
+          path: build/live/live-image-amd64.hybrid.iso
       - name: Boot actual ISO without networking and verify retained backups
         run: python3 scripts/test-iso.py build/live/live-image-amd64.hybrid.iso --out dist/boot-tests
       - name: Prepare release parts, checksums, manifests and evidence

@@ -21,6 +21,40 @@ class LiveStorageTests(unittest.TestCase):
                 actual=subprocess.check_output(['blkid','-p','-s','LABEL','-o','value',str(image)],text=True).strip()
                 self.assertEqual(actual,label)
 
+class VmLauncherTests(unittest.TestCase):
+    def fake_qemu(self,folder,guest_failure=False):
+        import sys
+        p=folder/'qemu-system-x86_64'
+        p.write_text('#!'+sys.executable+'\n'+'''import json,pathlib,sys
+a=sys.argv[1:]
+root=pathlib.Path(__file__).parent
+with (root/'calls.jsonl').open('a') as f:f.write(json.dumps(a)+'\\n')
+serial=pathlib.Path(a[a.index('-serial')+1].removeprefix('file:'))
+if a[a.index('-accel')+1]=='kvm':
+'''+(" serial.write_text('SHOMER_TEST_STARTED\\nSHOMER_TEST_FAIL\\n')\n" if guest_failure else '')+''' print('Could not access KVM kernel module: Permission denied',file=sys.stderr)
+ print('qemu-system-x86_64: -accel kvm: failed to initialize kvm: Permission denied',file=sys.stderr)
+ sys.exit(1)
+serial.write_text('SHOMER_TEST_STARTED\\nSHOMER_OFFLINE_PASS\\n')
+''')
+        p.chmod(0o755)
+    def test_kvm_host_refusal_repeats_identical_test_in_software(self):
+        import os,unittest.mock
+        with tempfile.TemporaryDirectory() as d:
+            p=pathlib.Path(d);self.fake_qemu(p)
+            with unittest.mock.patch.dict(os.environ,{'PATH':str(p)+os.pathsep+os.environ['PATH']}):
+                result=iso.run_vm(p/'image.iso',p/'disk.raw','bios',1,p,'kvm')
+            calls=[json.loads(line) for line in (p/'calls.jsonl').read_text().splitlines()]
+            self.assertEqual([a[a.index('-accel')+1] for a in calls],['kvm','tcg'])
+            for a in calls:self.assertEqual(a[a.index('-nic')+1],'none')
+            self.assertEqual(result['acceleration'],'tcg')
+    def test_guest_failure_is_never_hidden_by_acceleration_fallback(self):
+        import os,unittest.mock
+        with tempfile.TemporaryDirectory() as d:
+            p=pathlib.Path(d);self.fake_qemu(p,guest_failure=True)
+            with unittest.mock.patch.dict(os.environ,{'PATH':str(p)+os.pathsep+os.environ['PATH']}):
+                with self.assertRaises(RuntimeError):iso.run_vm(p/'image.iso',p/'disk.raw','bios',1,p,'kvm')
+            self.assertEqual(len((p/'calls.jsonl').read_text().splitlines()),1)
+
 class GeometryTests(unittest.TestCase):
     def test_requires_geometry_instead_of_claiming_complete_on_zero_exit(self):
         for output in ['','EMMC USER Size: 0x1000','EMMC USER Size: 0x1000\nEMMC Boot1 Size: 0x0\nEMMC Boot2 Size: 0x20']:

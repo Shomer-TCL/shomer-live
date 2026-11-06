@@ -4,12 +4,12 @@ import argparse,json,os,pathlib,shutil,subprocess,time
 TEST_LABEL='SHOMER_TEST'
 
 def accelerator():
-    if os.access('/dev/kvm',os.R_OK|os.W_OK):
-        p=subprocess.Popen(['qemu-system-x86_64','-machine','q35,accel=kvm','-cpu','host','-m','128','-nodefaults','-display','none','-S'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-        try:
-            p.wait(timeout=1)
-        except subprocess.TimeoutExpired:
-            p.terminate();p.wait();return 'kvm'
+    try:
+        fd=os.open('/dev/kvm',os.O_RDWR)
+        os.close(fd)
+        return 'kvm'
+    except OSError:
+        print('KVM is not accessible to this runner; using TCG software emulation',flush=True)
     return 'tcg'
 
 def run_vm(iso,disk,mode,phase,out,accel):
@@ -38,6 +38,14 @@ def run_vm(iso,disk,mode,phase,out,accel):
             except subprocess.TimeoutExpired:p.kill();p.wait()
             raise
     data=log.read_text(errors='replace') if log.exists() else ''
+    error=(out/f'{mode}-{phase}.qemu.log').read_text(errors='replace')
+    # A host acceleration refusal before any guest kernel output says nothing
+    # about the ISO. Retry the same disk/image/checks using software emulation.
+    # Once the guest starts, a guest failure is always a real test failure.
+    if accel=='kvm' and p.returncode!=0 and not data and any(s in error.lower() for s in ['failed to initialize kvm','could not access kvm','kvm acceleration not available']):
+        (out/f'{mode}-{phase}.kvm-unavailable.log').write_text(error)
+        print('Runner refused KVM initialization; repeating the identical test with TCG',flush=True)
+        return run_vm(iso,disk,mode,phase,out,'tcg')
     expected='SHOMER_OFFLINE_PASS' if phase==1 else 'SHOMER_PERSISTENCE_PASS'
     if p.returncode!=0 or expected not in data or 'SHOMER_TEST_FAIL' in data:raise RuntimeError('ISO validation failed: '+mode+' phase '+str(phase)+'; inspect '+str(log))
     return {'mode':mode,'phase':phase,'result':'passed','network':'no NIC','acceleration':accel,'evidence':log.name}
