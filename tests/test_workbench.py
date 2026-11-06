@@ -4,6 +4,22 @@ def load(name,path):
     loader=importlib.machinery.SourceFileLoader(name,str(path));spec=importlib.util.spec_from_loader(name,loader);module=importlib.util.module_from_spec(spec);loader.exec_module(module);return module
 brom=load('brom',ROOT/'runtime/shomer-brom-backup')
 stage=load('stage',ROOT/'scripts/stage.py')
+iso=load('iso',ROOT/'scripts/test-iso.py')
+
+class LiveStorageTests(unittest.TestCase):
+    def test_live_labels_survive_actual_ext4_creation(self):
+        import re
+        config=(ROOT/'scripts/configure-live.sh').read_text()
+        persistence=re.search(r'persistence-label=([A-Z_]+)',config).group(1)
+        helper=(ROOT/'runtime/shomer-boot-test').read_text()
+        self.assertEqual(re.search(r'blkid -L ([A-Z_]+)',helper).group(1),iso.TEST_LABEL)
+        for label in [persistence,iso.TEST_LABEL]:
+            with tempfile.TemporaryDirectory() as d:
+                image=pathlib.Path(d)/'volume.img'
+                with image.open('wb') as f:f.truncate(16*1024*1024)
+                subprocess.run(['mkfs.ext4','-q','-F','-L',label,str(image)],check=True,capture_output=True)
+                actual=subprocess.check_output(['blkid','-p','-s','LABEL','-o','value',str(image)],text=True).strip()
+                self.assertEqual(actual,label)
 
 class GeometryTests(unittest.TestCase):
     def test_requires_geometry_instead_of_claiming_complete_on_zero_exit(self):

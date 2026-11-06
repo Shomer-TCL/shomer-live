@@ -17,7 +17,7 @@ Required automated gates:
 - Shut down and boot again with the same labeled test disk; verify retained data.
 
 QEMU `fw_cfg` enables the self-test service, which requires the explicitly labeled
-`SHOMER_TEST_BACKUPS` test volume. No altered test ISO or bypassed bootloader is
+`SHOMER_TEST` test volume. No altered test ISO or bypassed bootloader is
 used. The regular physical live session never runs that service.
 
 Automated evidence does **not** establish real BROM support, phone boot/radio

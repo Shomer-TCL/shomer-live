@@ -9,7 +9,15 @@ lb config --mode debian --distribution trixie --architectures amd64 \
   --debian-installer false --apt-recommends false \
   --iso-application 'Shomer TCL Flip 2 Offline Workbench' \
   --iso-volume SHOMER_LIVE --memtest none \
-  --bootappend-live 'boot=live components console=tty0 console=ttyS0,115200 username=shomer hostname=shomer-live locales=en_US.UTF-8 keyboard-layouts=us persistence persistence-label=SHOMER_PERSISTENCE'
+  --bootappend-live 'boot=live components console=tty0 console=ttyS0,115200 username=shomer hostname=shomer-live locales=en_US.UTF-8 keyboard-layouts=us persistence persistence-label=SHOMER_PERSIST'
+# Debian's stock live-build menus wait indefinitely. Preserve their normal
+# entries/graphics, but boot the default live entry after three seconds.
+mkdir -p config/bootloaders/isolinux config/bootloaders/grub-pc
+sed 's/^timeout 0$/timeout 30/' /usr/share/live/build/bootloaders/isolinux/isolinux.cfg > config/bootloaders/isolinux/isolinux.cfg
+{
+  printf 'set timeout=3\nset timeout_style=menu\n'
+  cat /usr/share/live/build/bootloaders/grub-pc/config.cfg
+} > config/bootloaders/grub-pc/config.cfg
 cp ../../config/packages.list config/package-lists/shomer.list.chroot
 mkdir -p config/includes.chroot/opt/shomer config/hooks/live
 cp -a ../root/. config/includes.chroot/

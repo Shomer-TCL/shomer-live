@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 test "$(cat /sys/firmware/qemu_fw_cfg/by_name/opt/shomer/selftest/raw 2>/dev/null)" = 1 || exit 0
+echo SHOMER_TEST_STARTED >/dev/ttyS0
 kit=/opt/shomer/TCL-Flip2
-device=$(blkid -L SHOMER_TEST_BACKUPS)
+device=$(blkid -L SHOMER_TEST || true)
 test -n "$device" || { echo 'SHOMER_TEST_FAIL:no-explicit-test-volume' >/dev/ttyS0; exit 1; }
 mkdir -p /mnt/shomer-test
 mount "$device" /mnt/shomer-test
@@ -39,6 +40,7 @@ for i in $(seq 1 60); do
 done
 pgrep -u shomer -x xfce4-session
 pgrep -u shomer -x lxpolkit
+echo SHOMER_DESKTOP_READY
 test "$(find /sys/class/net -mindepth 1 -maxdepth 1 ! -name lo | wc -l)" -eq 0
 shomer-check-destination /mnt/shomer-test
 if shomer-check-destination /tmp; then echo 'RAM destination was incorrectly accepted'; exit 1; fi

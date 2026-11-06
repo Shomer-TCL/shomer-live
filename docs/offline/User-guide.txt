@@ -60,7 +60,7 @@ Keep them private and never restore another phone's identity/calibration partiti
 
 OPTIONAL PERSISTENCE
 Use a separate deliberately prepared Linux ext4 partition labeled
-SHOMER_PERSISTENCE with persistence.conf containing the single line:
+SHOMER_PERSIST with persistence.conf containing the single line:
 /home/shomer union
 The boot configuration enables persistence when that labeled partition is present.
 Do not repartition a disk casually; doing so can erase it. A separate mounted
