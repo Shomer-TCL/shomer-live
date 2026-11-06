@@ -25,6 +25,21 @@ class ArchiveTests(unittest.TestCase):
                     m=tarfile.TarInfo(name);m.type=kind;m.size=0;m.linkname='/etc/passwd';t.addfile(m,io.BytesIO())
                 with self.assertRaises(ValueError):stage.extract(archive,p/'unpacked')
 
+class StockPackageTests(unittest.TestCase):
+    def test_packaged_checksums_follow_renames_and_exclude_device_artifacts(self):
+        for release,expected in [('KEKA','ROOTED-recovery2.img'),('KEE7','STOCK-recovery-KEE7.img')]:
+            with tempfile.TemporaryDirectory() as d:
+                p=pathlib.Path(d)
+                for name in ['recovery','boot','frp','metadata','SHA256SUMS','README.md']:
+                    (p/name).write_bytes(('fixture-'+name).encode())
+                excluded=stage.normalize_stock(p,release)
+                self.assertEqual(excluded,['frp','metadata'])
+                self.assertTrue((p/expected).exists());self.assertFalse((p/'recovery').exists())
+                self.assertFalse((p/'frp').exists());self.assertFalse((p/'metadata').exists())
+                result=subprocess.run(['sha256sum','-c','SHA256SUMS'],cwd=p,capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                self.assertEqual((p/'Source-provenance/SHA256SUMS.original').read_bytes(),b'fixture-SHA256SUMS')
+
 class ReleaseTests(unittest.TestCase):
     def test_actual_split_and_linux_reassembly_preserve_bytes(self):
         import shutil

@@ -38,12 +38,16 @@ remain unknown; they are not treated as proof of a particular mode.
 Recovery/vbmeta use verified bootloader fastboot. Super uses verified fastbootd.
 The program verifies transitions instead of assuming a reboot command succeeded.
 
+MANUAL USE
+Read Manual-commands.txt for step-by-step commands using the installed tools.
+
 WHERE THINGS ARE
 ~/TCL-Flip2 points to the complete toolkit at /opt/shomer/TCL-Flip2.
 Images/INDEX.json identifies rooted vs stock recovery and version restrictions.
 Tools/MTKClient/source contains the full pinned source, loaders and payloads.
 Tools/Neutronscott contains reference source and Magisk 27.0 used by its build recipe.
 Images/Neutronscott contains the downloaded upstream release images.
+Documentation/upstream includes an offline snapshot of Neutronscott's wiki.
 Checksums-and-manifests records sources, exact files and installed packages.
 Licenses-and-source and upstream source directories contain licenses/source.
 

@@ -67,6 +67,37 @@ def tools():
             with zipfile.ZipFile(p) as z:
                 target=KIT/'Tools/Image-tools/magiskboot';target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(z.read('lib/x86_64/libmagiskboot.so'));target.chmod(0o755)
     copy(ROOT/'config/tools.lock.json',KIT/'Checksums-and-manifests/tools.lock.json')
+PER_DEVICE_ARTIFACTS={'efuse','frp','metadata','mmcblk0rpmb','rpmb','sec1',
+                      'mmcblk0boot0','mmcblk0boot1','nvram','nvdata','nvcfg',
+                      'proinfo','persist','seccfg','userdata'}
+
+def normalize_stock(folder,release):
+    provenance=folder/'Source-provenance';provenance.mkdir()
+    for name in ['SHA256SUMS','SHA256SUMS.txt','README.md','.urls']:
+        p=folder/name
+        if p.exists():p.rename(provenance/(name.lstrip('.')+'.original'))
+    excluded=[]
+    for name in sorted(PER_DEVICE_ARTIFACTS):
+        p=folder/name
+        if p.exists():p.unlink();excluded.append(name)
+    names={'recovery':'ROOTED-recovery2.img' if release=='KEKA' else 'STOCK-recovery-KEE7.img',
+           'recovery-genuine':'STOCK-recovery-KEKA.img'}
+    for original,label in names.items():
+        if (folder/original).exists():(folder/original).rename(folder/label)
+    (folder/'README.md').write_text(
+        'Stock '+release+' reference firmware for TCL T408DL.\n\n'
+        'Only the explicitly reviewed Shomer inputs are selected by the flasher.\n'
+        'Recovery filenames explicitly distinguish rooted from genuine stock.\n'
+        'super.gz is already rejoined; no split source parts are needed.\n'
+        'Excluded per-device dump artifacts: '+', '.join(excluded)+'.\n'
+        'SHA256SUMS below covers the actual packaged files. Original upstream\n'
+        'filenames, checksum lists and documentation are retained for provenance\n'
+        'under Source-provenance; their historical paths are not package paths.\n')
+    with (folder/'SHA256SUMS').open('w') as out:
+        for p in sorted(folder.rglob('*')):
+            if p.is_file() and p!=folder/'SHA256SUMS':out.write(digest(p)+'  '+str(p.relative_to(folder))+'\n')
+    return excluded
+
 def firmware():
     for stock in ['KEKA','KEE7']:
         src=BUILD/'inputs'/('stock-'+stock);dst=KIT/'Images/Stock/T408DL'/stock;tree(src,dst)
@@ -81,12 +112,13 @@ def firmware():
     raw=BUILD/'super.raw'
     with gzip.open(current/'super.raw.gz','rb') as r,raw.open('wb') as f:shutil.copyfileobj(r,f,1024*1024)
     checked(raw,plan['write_order'][-1]['sha256'])
-    # Explicit names prevent confusing the rooted KEKA 'recovery' dump with stock.
+    # Keep source provenance separate from the checksums of the actual package.
     keka=KIT/'Images/Stock/T408DL/KEKA'
-    (keka/'recovery').rename(keka/'ROOTED-recovery2.img');(keka/'recovery-genuine').rename(keka/'STOCK-recovery-KEKA.img')
+    excluded={stock:normalize_stock(KIT/'Images/Stock/T408DL'/stock,stock) for stock in ['KEKA','KEE7']}
     index={'supported_shomer':['T408DL KEKA','corresponding 4058G UPCI'],'shomer_build':current.name,
            'source_commit':json.loads((ROOT/'config/assets.lock.json').read_text())['archives'][0]['source_commit'],
            'recovery2':'Stock/T408DL/KEKA/ROOTED-recovery2.img','genuine_stock_recovery':'Stock/T408DL/KEKA/STOCK-recovery-KEKA.img',
+           'excluded_per_device_dump_artifacts':excluded,
            'warnings':['KEE7 is a stock/reference source, not an approved starting build for this Shomer image.','Neutronscott boot images are version-specific reference assets; never selected automatically.','No identity/calibration partition from another handset may be restored.']}
     (KIT/'Images/INDEX.json').write_text(json.dumps(index,indent=2)+'\n')
 def build_apps():

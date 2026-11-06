@@ -1,0 +1,162 @@
+MANUAL COMMAND REFERENCE — SHOMER LIVE
+
+These commands use the tools already installed in the ISO. No downloads or local
+compilation are needed. Run one command at a time and inspect its output. Commands
+that write the phone are explicitly separated below. Never paste this whole file
+into a terminal. Model/build compatibility and a verified backup come first.
+
+1. CHOOSE STORAGE AND INSPECT TOOLS (READ ONLY)
+
+Open a terminal. Mount your chosen external backup drive with the file manager.
+Replace /media/shomer/BACKUPS with its actual mounted folder, then:
+
+  shomer-check-destination /media/shomer/BACKUPS
+  cd /media/shomer/BACKUPS
+  mkdir manual-session
+  cd manual-session
+  kit=/opt/shomer/TCL-Flip2
+  df -h .
+  lsusb
+  adb version
+  fastboot --version
+  mtk --help
+
+The kit variable applies to this terminal. Keep ample free space: a complete
+BROM backup plus its verification copy may need over twice the phone's capacity.
+Use ext4, exFAT or NTFS; FAT32 cannot store files larger than 4 GiB.
+
+2. BROM BACKUP BEFORE UNLOCK (STORAGE READS ONLY)
+
+Power off the phone and use its supported BROM connection/key sequence. BROM is
+MediaTek USB 0e8d:0003. Some handsets do not expose it. Stop if access fails.
+The guided helper performs the following with size/hash/completeness checks:
+
+  shomer-brom-backup --destination /media/shomer/BACKUPS
+
+For advanced manual reads, work in a fresh backup directory:
+
+  mtk printgpt > geometry.log 2>&1
+  cat geometry.log
+  mtk rf user.bin --parttype user
+  mtk rf user.verify.bin --parttype user
+  mtk rf boot1.bin --parttype boot1
+  mtk rf boot1.verify.bin --parttype boot1
+  mtk rf boot2.bin --parttype boot2
+  mtk rf boot2.verify.bin --parttype boot2
+  stat -c '%n %s bytes' *.bin
+  sha256sum *.bin
+  cmp user.bin user.verify.bin
+  cmp boot1.bin boot1.verify.bin
+  cmp boot2.bin boot2.verify.bin
+
+Each file must match the corresponding positive size reported in geometry.log.
+Every cmp must exit successfully. Read and verify any reported nonzero GP1–GP4
+areas with --parttype gp1 etc. as well. A zero exit alone does not prove a complete
+read. RPMB, efuses and secure-world secrets are outside this backup. Preserve
+logs and partial data if anything fails. No general whole-phone restore command
+is provided: restoring storage/GPT/identity requires a handset-specific plan.
+
+3. IDENTIFY FASTBOOT MODE (NO PARTITION WRITES)
+
+For the TCL preloader route, run this before plugging in a powered-off handset:
+
+  shomer-enter-fastboot --timeout 180
+
+Then inspect:
+
+  fastboot devices
+  fastboot getvar product
+  fastboot getvar is-userspace
+  fastboot getvar unlocked
+  fastboot getvar version-bootloader
+  fastboot getvar partition-size:recovery
+
+Connect only one phone. is-userspace:no means bootloader fastboot; yes means
+recovery userspace fastbootd. An unsupported/unknown query proves neither mode.
+gflip6 alone does not prove the model/build. Read Supported-phones.txt and check
+the actual handset About screen. This release's installation input is approved
+for T408DL KEKA / the corresponding 4058G UPCI variant only.
+
+4. RECOVERY BACKUP FALLBACK (WRITES RECOVERY; UNLOCK ERASES DATA)
+
+Prefer the BROM route above when available. A recovery backup cannot preserve
+existing personal data if you must unlock first: unlocking wipes it. Copy any
+accessible contacts/photos first. Do not unlock merely to diagnose a mode query.
+
+The manual fallback follows this sequence, only after compatibility/backup review:
+
+  fastboot flashing unlock
+
+That command is destructive; confirm on the phone only when intended. Recheck
+unlocked and is-userspace. Recovery must be present and exactly 0x1800000 bytes
+(25,165,824), with confirmed bootloader fastboot, before the next write:
+
+  fastboot flash recovery "$kit/Images/Stock/T408DL/KEKA/ROOTED-recovery2.img"
+  fastboot reboot recovery
+  adb wait-for-device
+  adb shell getprop ro.bootmode
+
+ro.bootmode must report recovery. Inspect the partition list:
+
+  adb shell "su -c 'ls -l /dev/block/by-name'"
+
+Binary-safe example for ONE partition (repeat for every intended partition):
+
+  adb exec-out "su -c 'dd if=/dev/block/by-name/nvram bs=1048576'" > nvram.img
+  adb shell "su -c 'sha256sum /dev/block/by-name/nvram'"
+  sha256sum nvram.img
+
+Check the byte count and phone/local hashes for every image. Include identity
+and calibration partitions in YOUR OWN backup; never restore another handset's.
+Encrypted userdata is not a guarantee of recoverable contacts/files. The Shomer
+flasher can enumerate, stream, zip and verify readable partitions automatically.
+
+Restore genuine stock recovery BEFORE continuing installation, including after a
+failed backup. Return to confirmed bootloader fastboot; adb reboot bootloader may
+boot normal Android on this model, so use the preloader route if needed. Recheck
+is-userspace:no and recovery size, then:
+
+  fastboot flash recovery "$kit/Images/Stock/T408DL/KEKA/STOCK-recovery-KEKA.img"
+
+If any recovery write is rejected or restore fails, STOP. Recovery contents are
+uncertain. Preserve logs and diagnose before any dependent writes.
+
+5. MANUAL SHOMER INSTALLATION (PARTITION WRITES)
+
+First verify all packaged hashes:
+
+  (cd "$kit" && sha256sum -c Checksums-and-manifests/files.sha256)
+
+Prepare the pinned current super image on your selected writable drive:
+
+  gzip -dc "$kit/Images/Shomer/2026-11-05_785693c/super.raw.gz" > super.raw
+  sha256sum super.raw
+
+Expected SHA-256, 2,147,483,648 bytes:
+49303b828dff82aa5bdeea69f0acf8a5ceb5fdb59df1e34419cf168a407ddf0a
+
+Review flash-plan.json in that same image directory. With the supported phone,
+verified backup, restored stock recovery, unlocked bootloader and confirmed
+is-userspace:no, write only the three intended verification metadata partitions:
+
+  fastboot --disable-verity --disable-verification flash vbmeta "$kit/Images/Stock/T408DL/KEKA/vbmeta"
+  fastboot --disable-verity --disable-verification flash vbmeta_system "$kit/Images/Stock/T408DL/KEKA/vbmeta_system"
+  fastboot --disable-verity --disable-verification flash vbmeta_vendor "$kit/Images/Stock/T408DL/KEKA/vbmeta_vendor"
+
+STOP immediately if any command fails. Then request fastbootd:
+
+  fastboot reboot fastboot
+  fastboot getvar is-userspace
+
+Wait and recheck until it explicitly says yes. Do not infer mode from the reboot
+command succeeding. With confirmed fastbootd:
+
+  fastboot flash super super.raw
+
+Only after that succeeds:
+
+  fastboot reboot
+
+No modem, bootloader or identity partition is part of this installation plan.
+No erase is required by this command reference. Never relock with modified Shomer
+OS. Physical-phone compatibility remains unvalidated by this ISO's VM tests.

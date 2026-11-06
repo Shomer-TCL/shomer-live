@@ -1,0 +1,10 @@
+Offline reference snapshot: https://github.com/neutronscott/flip2/wiki
+Git repository: https://github.com/neutronscott/flip2.wiki.git
+Revision: ccaf21716dbed32c643e7ac4fb2bf2fe46e320d5
+Archived: 2026-11-06
+Attribution: neutronscott and upstream wiki contributors.
+
+These historical upstream pages are reference material. They are not this
+release's installation instructions or compatibility approval. Some original
+pages describe downloading or updating software; the workbench's bundled tools
+are preinstalled. Use START-HERE for the current Shomer workflow.

@@ -54,11 +54,17 @@ test -n "$(find "$kit/Tools/MTKClient/source/mtkclient/Loader" -name '*.bin' -pr
 test -n "$(find "$kit/Tools/MTKClient/source/mtkclient/payloads" -name '*.bin' -print -quit)"
 cd "$kit"
 sha256sum -c Checksums-and-manifests/files.sha256 >/mnt/shomer-test/toolkit-checksums.log
+for stock in KEKA KEE7; do
+  (cd "$kit/Images/Stock/T408DL/$stock" && sha256sum -c SHA256SUMS) >"/mnt/shomer-test/stock-$stock-checksums.log"
+done
 mkdir -p /mnt/shomer-test/gui /mnt/shomer-test/image-inspection
 "$kit/Shomer-Flasher/shomer-flasher" --gui-smoke /mnt/shomer-test/gui
 test "$(find /mnt/shomer-test/gui -name '*.png' | wc -l)" -ge 6
+# Exercise the actual X11 backend as the live desktop user, with a writable cwd.
+install -d -o shomer -g shomer /mnt/shomer-test/mtk-desktop
+install -o shomer -g shomer -m 600 "$XAUTHORITY" /mnt/shomer-test/mtk-desktop/xauthority
 set +e
-QT_QPA_PLATFORM=offscreen timeout 10s mtk-gui >/mnt/shomer-test/mtk-gui.log 2>&1
+(cd /mnt/shomer-test/mtk-desktop && runuser -u shomer -- env DISPLAY=:0 XAUTHORITY=/mnt/shomer-test/mtk-desktop/xauthority QT_QPA_PLATFORM=xcb timeout 10s mtk-gui) >/mnt/shomer-test/mtk-gui.log 2>&1
 qt_status=$?
 set -e
 test "$qt_status" -eq 124

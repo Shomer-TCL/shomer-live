@@ -26,6 +26,12 @@
       "repository": "https://github.com/Shomer-TCL/shomer-flasher",
       "commit": "4508eee3176f0f6c5f1154d3c6a7e0ddc256751a",
       "branch": "feat/linux-live-iso"
+    },
+    {
+      "name": "neutronscott-wiki",
+      "repository": "https://github.com/neutronscott/flip2.wiki.git",
+      "commit": "ccaf21716dbed32c643e7ac4fb2bf2fe46e320d5",
+      "path": "docs/upstream/neutronscott-wiki"
     }
   ]
 }
