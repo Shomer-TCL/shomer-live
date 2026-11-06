@@ -1,0 +1,9 @@
+build/
+dist/
+sources/
+__pycache__/
+*.pyc
+*.iso
+*.iso.part-*
+*.log
+.venv/

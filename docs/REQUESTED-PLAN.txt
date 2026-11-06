@@ -1,0 +1,104 @@
+Yes. I’d build a Shomer TCL Flip 2 Live USB: a small Linux desktop that boots from a Rufus-written stick and has the complete toolkit installed for offline use.
+
+The TAG ROM may be involved in your failure, but that isn’t confirmed. We also found missing mode checks in the flasher; those should be fixed before testing another phone.
+1. Repository and ISO
+Create a private repository: Shomer-TCL/shomer-live.
+
+Use Debian stable, amd64, with a minimal Xfce desktop, built through Debian’s live-build system.
+
+The ISO should:
+- Boot directly into the desktop without installation.
+- Support BIOS and UEFI boot.
+- Work without Internet access.
+- Run without changing the computer’s internal disks.
+- Offer optional persistence for settings and logs.
+- Save phone backups to a selected writable USB drive or disk—not temporary live RAM.
+Estimate 3–5 GB initially, depending on the firmware inventory. Including every historical ROM would substantially increase that size so we will only include the stock and latest shomer release.
+2. Organize everything clearly
+TCL-Flip2/
+├── START-HERE/
+│   ├── User-guide
+│   ├── Supported-phones
+│   └── Troubleshooting
+├── Shomer-Flasher/
+├── Tools/
+│   ├── Android-platform-tools/
+│   ├── MTKClient/
+│   ├── Neutronscott/
+│   └── Image-and-recovery-tools/
+├── Images/
+│   ├── Shomer/<release>/
+│   ├── Stock/T408DL/KEKA/
+│   ├── Stock/T408DL/KEE7/
+│   └── Neutronscott/<release>/
+├── Documentation/
+├── Checksums-and-manifests/
+└── Licenses-and-source/
+Each image needs its source, supported models/builds, checksum, purpose, and known limitations. Files named simply recovery must be clearly labeled stock or rooted.
+
+No production private signing keys belong in the ISO.
+3. Preinstall the complete toolkit
+Include pinned versions of:
+- adb and fastboot, with their required libraries.
+- MTKClient and its complete Python environment, USB libraries, payloads, and other required assets.
+- Neutronscott’s autobooter/preloader tools and available relevant recovery/boot images.
+- Android image tools: sparse-image conversion, boot-image unpacking, AVB inspection, and dynamic-partition utilities.
+- USB diagnostics, serial-port tools, filesystem utilities, compression, checksums, and partition inspection tools.
+- Offline documentation and command examples.
+Configure the required Linux USB/serial modules, udev rules, and device permissions. No pip, apt, Git clone, or first-run download should be necessary during use.
+
+MTKClient’s presence must not imply that it can access every handset; some firmware blocks its available connection methods.
+4. Add a Linux GUI to the existing flasher
+Keep the existing Go flashing engine and controller. Add a lightweight native Linux GUI rather than maintaining a second flashing implementation.
+
+Suggested screens:
+1. Identify phone — detected identity, entered identity, connection mode, unlock state.
+2. Check compatibility — image compatibility and verified hashes.
+3. Back up — destination, available space, scope, progress, verification.
+4. Review installation — exact partitions and files to be written.
+5. Install — progress, current operation, expandable logs.
+6. Results — completed steps, failures, backup location, recovery instructions.
+Keep the terminal interface available too.
+5. Fix the flashing workflow first
+Before bundling it, improve the existing program:
+- Explicitly distinguish bootloader fastboot, fastbootd, Android ADB, and recovery ADB.
+- Verify mode after every transition.
+- Treat unsupported mode queries as unknown.
+- Require confirmed fastbootd before the documented super operation.
+- Validate recovery partition availability before attempting its write.
+- Preserve failure evidence and stop dependent writes.
+- Avoid claiming rooted recovery is installed merely because a write was attempted.
+- Distinguish successful backup, incomplete backup, and unavailable backup.
+The GUI and terminal version must share these checks.
+6. Make offline operation testable
+Produce an asset manifest covering installed packages, tool versions, image hashes, and bundled documentation.
+
+Validate the finished ISO with networking disabled:
+- Boot and open every application.
+- Run every tool’s basic checks.
+- Inspect, unpack, and verify bundled images.
+- Exercise simulated flashing and backup workflows.
+- Confirm nothing attempts a required download.
+- Confirm backups remain accessible after shutting down the live session.
+7. Test actual boot and phone workflows
+Test	Required evidence
+BIOS and UEFI	ISO reaches the desktop
+Rufus USB	Physical PC boots the written stick
+Secure Boot	Explicitly tested support status
+USB detection	Preloader, bootloader, fastbootd, and recovery detected
+Backup	Correct sizes and matching phone/local checksums
+Installation	Successful installation on a designated supported test phone
+Failure handling	Disconnects and rejected writes stop correctly
+
+
+Virtual-machine tests can validate the desktop and offline packaging. Actual flashing support needs physical-phone testing.
+8. Deliverables
+- Reproducible build repository and CI workflow.
+- Live ISO and SHA-256 checksum.
+- Package/tool/image inventory.
+- Offline user guide and recovery instructions.
+- Test report identifying exactly which phones and builds passed.
+- Release notes and source/license information.
+Build order: fix mode handling → assemble the offline toolkit → build and boot the ISO → add the Linux GUI → perform physical USB and phone tests → release.
+
+The target is complete offline operation for verified supported workflows. “Works on every phone” would require evidence we don’t yet have.

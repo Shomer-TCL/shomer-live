@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Shomer Workbench
+Comment=Offline TCL Flip 2 backup, diagnostics and installation
+Exec=/usr/local/bin/shomer-workbench
+Icon=phone
+Terminal=false
+Categories=System;Utility;

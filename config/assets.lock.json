@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "release": "source-assets-20261106",
+  "archives": [
+    {
+      "name": "stock-KEKA.tar.gz",
+      "sha256": "5b05e72bba95e3580a0bed54f12f698ab07d99f22e77ef76d633b5e0deb8e9cf",
+      "size": 837183056,
+      "source": "Shomer-TCL/shomer-images",
+      "source_commit": "8e8e7f5d4e0f814b7acee5f764235938162ad2cd",
+      "source_path": "stock/KEKA"
+    },
+    {
+      "name": "stock-KEE7.tar.gz",
+      "sha256": "447b84f6a9c3bb11f01c76fb2a5ef5881e6fc4618ad333cb2e62a758e2566dd1",
+      "size": 812633489,
+      "source": "Shomer-TCL/shomer-images",
+      "source_commit": "8e8e7f5d4e0f814b7acee5f764235938162ad2cd",
+      "source_path": "stock/KEE7"
+    },
+    {
+      "name": "shomer-current.tar.gz",
+      "sha256": "557199768bdc9012b88e2ca34a620d8f90aabe1095401163b4cf9c35a02103f6",
+      "size": 724997699,
+      "source": "Shomer-TCL/shomer-images",
+      "source_commit": "8e8e7f5d4e0f814b7acee5f764235938162ad2cd",
+      "source_path": "builds/2026-11-05_785693c"
+    }
+  ]
+}

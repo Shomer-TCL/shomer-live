@@ -1,0 +1,17 @@
+#!/usr/bin/python3
+"""Refuse RAM/read-only destinations. Does not mount or modify any disk."""
+import json, os, pathlib, subprocess, sys
+def inspect(path):
+    p=pathlib.Path(path).resolve(strict=True)
+    if not p.is_dir() or not os.access(p, os.W_OK): raise ValueError('Destination is not a writable directory')
+    result=subprocess.run(['findmnt','--json','--target',str(p),'--output','SOURCE,FSTYPE,OPTIONS'],check=True,capture_output=True,text=True)
+    fs=json.loads(result.stdout)['filesystems'][0]
+    if fs['fstype'] in ('overlay','tmpfs','ramfs','squashfs','iso9660','udf') or 'ro' in fs['options'].split(','):
+        raise ValueError('Destination is temporary or read-only live storage')
+    source=fs['source'].split('[')[0]
+    if not source.startswith('/dev/') or source.startswith(('/dev/loop','/dev/ram','/dev/zram')):
+        raise ValueError('Select a mounted physical disk or persistent encrypted block device')
+    return str(p)
+if __name__=='__main__':
+    try: print(inspect(sys.argv[1]))
+    except Exception as e: print(str(e),file=sys.stderr);sys.exit(1)
