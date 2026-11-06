@@ -1,7 +1,7 @@
 [Unit]
 Description=Offline ISO validation (explicit CI kernel parameter only)
 After=display-manager.service live-config.service
-ConditionVirtualization=qemu
+ConditionVirtualization=vm
 ConditionPathExists=/sys/firmware/qemu_fw_cfg/by_name/opt/shomer/selftest/raw
 
 [Service]
