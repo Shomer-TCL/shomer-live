@@ -1,6 +1,11 @@
 live-boot
 live-config
 live-config-systemd
+user-setup
+locales
+keyboard-configuration
+iproute2
+live-tools
 linux-image-amd64
 xserver-xorg
 xinit

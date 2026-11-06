@@ -8,7 +8,7 @@ test -n "$device" || { echo 'SHOMER_TEST_FAIL:no-explicit-test-volume' >/dev/tty
 mkdir -p /mnt/shomer-test
 mount "$device" /mnt/shomer-test
 exec > >(tee /mnt/shomer-test/boot-test.log /dev/ttyS0) 2>&1
-trap 'status=$?; if [ "$status" != 0 ]; then echo SHOMER_TEST_FAIL; fi; sync; systemctl poweroff' EXIT
+trap 'status=$?; if [ "$status" != 0 ]; then echo SHOMER_TEST_FAIL; journalctl -b -u live-config -u lightdm --no-pager -n 60 || true; fi; sync; systemctl poweroff' EXIT
 if [ -f /mnt/shomer-test/offline-first-boot-passed ]; then
   test -s /mnt/shomer-test/offline-backup-retained.txt
   python3 - <<'PY'
