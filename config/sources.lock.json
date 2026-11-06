@@ -24,7 +24,7 @@
     {
       "name": "shomer-flasher",
       "repository": "https://github.com/Shomer-TCL/shomer-flasher",
-      "commit": "51c0f42e2f3c7e3e007d891f94b27f7856b9883d",
+      "commit": "4508eee3176f0f6c5f1154d3c6a7e0ddc256751a",
       "branch": "feat/linux-live-iso"
     }
   ]

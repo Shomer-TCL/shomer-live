@@ -54,23 +54,23 @@ func (w *window) build() error {
 	font := Font{Family: "Segoe UI", PointSize: 10}
 	sidebar := []Widget{Label{Text: "SHOMER", Font: Font{Family: "Segoe UI", PointSize: 18, Bold: true}, TextColor: teal}, Label{Text: "Flip 2 Workbench", TextColor: grey}, VSpacer{Size: 24}}
 	for i, name := range stages {
-		sidebar = append(sidebar, Label{AssignTo: &w.stageLabels[i], Text: fmt.Sprintf("%d   %s", i+1, name), MinSize: Size{Height: 46}, TextColor: grey})
+		sidebar = append(sidebar, Label{AssignTo: &w.stageLabels[i], Text: fmt.Sprintf("%d   %s", i+1, name), MinSize: Size{Height: 40}, TextColor: grey})
 	}
 	sidebar = append(sidebar, VSpacer{}, Label{Text: "Offline toolkit", TextColor: grey}, Label{Text: w.m.Version, TextColor: grey})
 	cards := []Widget{}
 	for i, name := range []string{"DETECTED IDENTITY", "SELECTED IDENTITY", "CONNECTION MODE", "UNLOCK STATE"} {
 		cards = append(cards, Composite{Background: SolidColorBrush{Color: walk.RGB(0xF0, 0xF3, 0xEA)}, Layout: VBox{Margins: Margins{Left: 16, Top: 12, Right: 16, Bottom: 12}}, MinSize: Size{Height: 98}, Children: []Widget{Label{Text: name, Font: Font{Family: "Consolas", PointSize: 9, Bold: true}, TextColor: teal}, Label{AssignTo: &w.identityValues[i], Text: "Not verified", TextColor: walk.RGB(0x16, 0x36, 0x35)}}})
 	}
-	return MainWindow{AssignTo: &w.mw, Title: "Shomer Flip 2 Workbench " + w.m.Version, Size: Size{Width: 1024, Height: 740}, MinSize: Size{Width: 900, Height: 680}, Font: font, Background: SolidColorBrush{Color: navy}, Layout: VBox{Margins: Margins{}, Spacing: 0}, Children: []Widget{
-		Composite{Layout: HBox{Margins: Margins{}, Spacing: 0}, Children: []Widget{
+	return MainWindow{AssignTo: &w.mw, Title: "Shomer Flip 2 Workbench " + w.m.Version, Size: Size{Width: 960, Height: 600}, MinSize: Size{Width: 840, Height: 540}, Font: font, Background: SolidColorBrush{Color: navy}, Layout: VBox{Margins: Margins{}, Spacing: 0}, Children: []Widget{
+		ScrollView{HorizontalFixed: true, StretchFactor: 1, MinSize: Size{Height: 100}, Layout: HBox{Margins: Margins{}, Spacing: 0}, Children: []Widget{
 			Composite{MinSize: Size{Width: 190}, MaxSize: Size{Width: 210}, Background: SolidColorBrush{Color: navy}, Layout: VBox{Margins: Margins{Left: 20, Top: 26, Right: 14, Bottom: 20}, Spacing: 8}, Children: sidebar},
 			Composite{Layout: VBox{Margins: Margins{Left: 24, Top: 24, Right: 24, Bottom: 16}, Spacing: 12}, Children: []Widget{
 				Label{AssignTo: &w.crumbs, TextColor: grey, Font: Font{Family: "Consolas", PointSize: 9}},
 				Label{AssignTo: &w.title, Font: Font{Family: "Consolas", PointSize: 21, Bold: true}, TextColor: walk.RGB(0x16, 0x36, 0x35)},
 				Label{AssignTo: &w.subtitle, TextColor: grey},
-				Composite{AssignTo: &w.identity, Layout: Grid{Columns: 2, Spacing: 12}, Children: cards},
+				Composite{AssignTo: &w.identity, Visible: false, Layout: Grid{Columns: 2, Spacing: 12}, Children: cards},
 				TextEdit{AssignTo: &w.text, ReadOnly: true, VScroll: true, Font: font},
-				Composite{AssignTo: &w.optComp, Layout: Grid{Columns: 3, Spacing: 10}, Children: []Widget{
+				Composite{AssignTo: &w.optComp, Visible: false, Layout: Grid{Columns: 3, Spacing: 10}, Children: []Widget{
 					Label{AssignTo: &w.phoneLbl, ColumnSpan: 3},
 					CheckBox{AssignTo: &w.cbBackup, Text: "Recovery backup first (fallback when BROM is unavailable)", ColumnSpan: 3, OnClicked: func() { w.toggle(app.OptBackup) }},
 					Label{Text: "Backup folder"},
@@ -86,7 +86,7 @@ func (w *window) build() error {
 					Label{Text: "Prefer a read-only MTKClient BROM backup when supported. The Linux live toolkit provides that route before this recovery fallback.", ColumnSpan: 3, TextColor: teal},
 					Label{AssignTo: &w.help, ColumnSpan: 3, TextColor: grey}, VSpacer{ColumnSpan: 3},
 				}},
-				Composite{AssignTo: &w.progComp, Layout: VBox{MarginsZero: true, Spacing: 10}, Children: []Widget{
+				Composite{AssignTo: &w.progComp, Visible: false, Layout: VBox{MarginsZero: true, Spacing: 10}, Children: []Widget{
 					TextEdit{AssignTo: &w.steps, ReadOnly: true, Font: font, MinSize: Size{Height: 180}},
 					ProgressBar{AssignTo: &w.bar, MaxValue: 100, MinSize: Size{Height: 20}}, Label{AssignTo: &w.progLabel},
 					CheckBox{AssignTo: &w.cbLog, Text: "Show activity log", OnClicked: func() { w.log.SetVisible(w.cbLog.Checked()) }},

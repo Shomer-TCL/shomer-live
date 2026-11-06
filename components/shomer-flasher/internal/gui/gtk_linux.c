@@ -60,8 +60,9 @@ ShomerUI *shomer_ui_new(const char *version) {
     g_object_unref(css);
     u->window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(u->window),"Shomer Flip 2 Workbench");
-    gtk_window_set_default_size(GTK_WINDOW(u->window),1024,740);
-    gtk_widget_set_size_request(u->window,880,640);
+    GdkRectangle area={0,0,1280,800};GdkDisplay *display=gdk_display_get_default();GdkMonitor *monitor=gdk_display_get_primary_monitor(display);if(!monitor)monitor=gdk_display_get_monitor_at_point(display,0,0);if(monitor)gdk_monitor_get_workarea(monitor,&area);
+    gtk_window_set_default_size(GTK_WINDOW(u->window),MIN(1024,area.width-24),MIN(740,area.height-48));
+    gtk_widget_set_size_request(u->window,MIN(880,area.width-24),MIN(640,area.height-48));
     g_signal_connect(u->window,"delete-event",G_CALLBACK(closing),u);
     GtkWidget *outer=gtk_box_new(GTK_ORIENTATION_VERTICAL,0),*row=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,0);
     gtk_container_add(GTK_CONTAINER(u->window),outer);gtk_box_pack_start(GTK_BOX(outer),row,TRUE,TRUE,0);

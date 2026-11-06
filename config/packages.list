@@ -25,7 +25,9 @@ xdotool
 imagemagick
 python3-pyte
 sudo
-policykit-1
+polkitd
+pkexec
+lxpolkit
 udisks2
 gvfs
 gvfs-backends
@@ -68,7 +70,7 @@ binutils
 xxd
 android-sdk-libsparse-utils
 abootimg
-unpackbootimg
+mkbootimg
 e2fsprogs
 f2fs-tools
 dosfstools
