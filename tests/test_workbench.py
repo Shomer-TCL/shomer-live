@@ -5,6 +5,35 @@ def load(name,path):
 brom=load('brom',ROOT/'runtime/shomer-brom-backup')
 stage=load('stage',ROOT/'scripts/stage.py')
 iso=load('iso',ROOT/'scripts/test-iso.py')
+inventory=load('inventory',ROOT/'scripts/inventory.py')
+destination=load('destination',ROOT/'runtime/shomer-check-destination')
+
+class ImmutableInventoryTests(unittest.TestCase):
+    def test_runtime_bytecode_changes_are_allowed_but_source_corruption_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=pathlib.Path(d); (p/'__pycache__').mkdir()
+            source=p/'tool.py'; source.write_text('print("original")\n')
+            cache=p/'__pycache__/tool.cpython-313.pyc'; cache.write_bytes(b'build cache')
+            inventory.write(p)
+            cache.write_bytes(b'regenerated runtime cache')
+            manifest='Checksums-and-manifests/files.sha256'
+            self.assertEqual(subprocess.run(['sha256sum','-c',manifest],cwd=p,capture_output=True).returncode,0)
+            source.write_text('corrupted source')
+            self.assertNotEqual(subprocess.run(['sha256sum','-c',manifest],cwd=p,capture_output=True).returncode,0)
+
+class DestinationTests(unittest.TestCase):
+    def check(self,fs,max_bytes=0):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d, patch.object(destination.subprocess,'run') as run:
+            run.return_value.stdout=json.dumps({'filesystems':[fs]})
+            return destination.inspect(d,max_bytes)
+    def test_ram_and_loop_storage_are_rejected(self):
+        for source,kind in [('overlay','overlay'),('tmpfs','tmpfs'),('/dev/loop0','ext4')]:
+            with self.assertRaises(ValueError):self.check({'source':source,'fstype':kind,'options':'rw'})
+    def test_large_brom_dump_requires_large_file_support(self):
+        fs={'source':'/dev/sdb1','fstype':'vfat','options':'rw'}
+        with self.assertRaisesRegex(ValueError,'FAT32'):self.check(fs,8*1024**3)
+        self.assertTrue(self.check(dict(fs,fstype='exfat'),8*1024**3))
 
 class LiveStorageTests(unittest.TestCase):
     def test_live_labels_survive_actual_ext4_creation(self):

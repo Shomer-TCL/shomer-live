@@ -447,6 +447,7 @@ func (f *Flow) backupStep() error {
 // On every path that wrote recovery, the stock recovery is written back before
 // it returns; if that fails the error is ErrRecoveryNotRestored.
 func (f *Flow) Backup() (err error) {
+    if err := f.validateBackupDestination(); err != nil { return err }
 	if !f.backupAvailable() {
 		f.event(EvStepFailed, StepBackupRecovery, "not in this flasher")
 		return refuse("this flasher was built without the backup recovery, so it cannot make a backup (download a newer flasher, or use --no-backup)")

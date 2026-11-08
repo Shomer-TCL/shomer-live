@@ -16,6 +16,23 @@ static gboolean closing(GtkWidget *widget, GdkEvent *event, gpointer data) {
     if(u->write-u->read<32) u->events[(u->write++)%32]=3;
     return TRUE;
 }
+// Keep every action reachable with directional keys and Enter. Read-only text
+// areas scroll with Up/Down; Left/Right leave them instead of trapping focus.
+static gboolean directional_key(GtkWidget *widget, GdkEventKey *event, gpointer data) {
+    ShomerUI *u=data;
+    GtkWidget *focus=gtk_window_get_focus(GTK_WINDOW(u->window));
+    guint key=event->keyval;
+    if(event->state & (GDK_CONTROL_MASK|GDK_MOD1_MASK))return FALSE;
+    if(key==GDK_KEY_Return || key==GDK_KEY_KP_Enter){
+        if(focus && GTK_IS_TOGGLE_BUTTON(focus)){gtk_button_clicked(GTK_BUTTON(focus));return TRUE;}
+        return FALSE;
+    }
+    if(key!=GDK_KEY_Up && key!=GDK_KEY_Down && key!=GDK_KEY_Left && key!=GDK_KEY_Right)return FALSE;
+    if(focus && GTK_IS_ENTRY(focus) && (key==GDK_KEY_Left || key==GDK_KEY_Right))return FALSE;
+    if(focus && GTK_IS_TEXT_VIEW(focus) && (key==GDK_KEY_Up || key==GDK_KEY_Down))return FALSE;
+    gtk_widget_child_focus(u->window, (key==GDK_KEY_Up || key==GDK_KEY_Left)?GTK_DIR_TAB_BACKWARD:GTK_DIR_TAB_FORWARD);
+    return TRUE;
+}
 static GtkWidget *label(const char *s, const char *class) {
     GtkWidget *w=gtk_label_new(s); gtk_label_set_xalign(GTK_LABEL(w),0);
     gtk_label_set_line_wrap(GTK_LABEL(w),TRUE);
@@ -64,6 +81,7 @@ ShomerUI *shomer_ui_new(const char *version) {
     gtk_window_set_default_size(GTK_WINDOW(u->window),MIN(1024,area.width-24),MIN(740,area.height-48));
     gtk_widget_set_size_request(u->window,MIN(880,area.width-24),MIN(640,area.height-48));
     g_signal_connect(u->window,"delete-event",G_CALLBACK(closing),u);
+    g_signal_connect(u->window,"key-press-event",G_CALLBACK(directional_key),u);
     GtkWidget *outer=gtk_box_new(GTK_ORIENTATION_VERTICAL,0),*row=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,0);
     gtk_container_add(GTK_CONTAINER(u->window),outer);gtk_box_pack_start(GTK_BOX(outer),row,TRUE,TRUE,0);
     GtkWidget *side=gtk_box_new(GTK_ORIENTATION_VERTICAL,7);gtk_widget_set_size_request(side,200,-1);

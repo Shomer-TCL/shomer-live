@@ -604,6 +604,7 @@ func (f *Flow) Detect() (PhoneInfo, error) {
 // WritePhone writes the phone: unlock if needed, backup (if on), then the ROM.
 // Detect must have run first.
 func (f *Flow) WritePhone() error {
+    if err := f.validateBackupDestination(); err != nil { return err }
 	// 4. unlock if needed
 	if f.phone.Unlock != Unlocked {
 		f.event(EvStepStart, StepUnlock, "")

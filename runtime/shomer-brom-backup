@@ -50,6 +50,7 @@ def main():
         if p.returncode: raise ValueError('MTKClient failed; inspect '+label+'.log; backup INCOMPLETE')
         return text
     sizes=geometry(run('geometry',['printgpt']))
+    subprocess.run(['shomer-check-destination',args.destination,'--max-file-bytes',str(max(sizes.values()))],check=True)
     info['geometry']=sizes;save()
     needed=sum(sizes.values())+max(sizes.values())+1024**3
     if shutil.disk_usage(out).free<needed: raise ValueError('Not enough space for complete backup and verification copy')

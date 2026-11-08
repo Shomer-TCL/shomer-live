@@ -4,6 +4,7 @@ live-config-systemd
 user-setup
 locales
 keyboard-configuration
+console-setup
 iproute2
 live-tools
 linux-image-amd64

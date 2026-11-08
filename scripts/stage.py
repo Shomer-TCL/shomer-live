@@ -178,10 +178,7 @@ def runtime():
     for p in FS.rglob('*'):
         if p.is_file() and any(x in p.name for x in forbidden):raise ValueError('Forbidden private material in ISO: '+str(p))
 def inventory():
-    out=KIT/'Checksums-and-manifests/files.sha256'
-    with out.open('w') as f:
-        for p in sorted(KIT.rglob('*')):
-            if p.is_file() and p!=out:f.write(digest(p)+'  '+str(p.relative_to(KIT))+'\n')
+    run('python3', ROOT/'scripts/inventory.py', KIT)
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--inputs',required=True,type=pathlib.Path);args=ap.parse_args()
