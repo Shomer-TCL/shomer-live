@@ -21,6 +21,7 @@ int main(int argc, char **argv) {
     assert(gtk_window_get_focus(GTK_WINDOW(u->window)) == u->directory);
     key(u, GDK_KEY_Right); /* Text cursor keeps its native behavior. */
     assert(gtk_window_get_focus(GTK_WINDOW(u->window)) == u->directory);
+    key(u, GDK_KEY_Down); /* Leave the editable path through its vertical navigation. */
     gboolean saw_userdata=FALSE, saw_erase=FALSE, saw_next=FALSE, saw_brom=FALSE;
     for(int i=0;i<24;i++) {
         key(u,GDK_KEY_Right);
