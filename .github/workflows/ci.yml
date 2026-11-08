@@ -73,8 +73,9 @@ jobs:
         working-directory: components/shomer-flasher
         shell: bash
         run: |
-          export PT_WINDOWS="$(cygpath -m "$GITHUB_WORKSPACE/build/windows-tools/platform-tools")"
-          bash test/make-test-flasher.sh "$GITHUB_WORKSPACE/build/rec" "$GITHUB_WORKSPACE/build/fixture"
+          workspace=$(cygpath -u "$GITHUB_WORKSPACE")
+          export PT_WINDOWS="$(cygpath -m "$workspace/build/windows-tools/platform-tools")"
+          bash test/make-test-flasher.sh "$workspace/build/rec" "$workspace/build/fixture"
       - name: Run Windows unit tests
         working-directory: components/shomer-flasher
         run: go test -timeout 180s ./...
