@@ -8,6 +8,16 @@ iso=load('iso',ROOT/'scripts/test-iso.py')
 inventory=load('inventory',ROOT/'scripts/inventory.py')
 destination=load('destination',ROOT/'runtime/shomer-check-destination')
 
+class CurrentImageTests(unittest.TestCase):
+    def test_build_paths_and_source_pin_are_consistent(self):
+        spec,path=stage.current_image()
+        lock=json.loads((ROOT/'config/assets.lock.json').read_text())
+        archive=next(a for a in lock['archives'] if a['name']=='shomer-current.tar.gz')
+        self.assertEqual(path.name,pathlib.Path(archive['source_path']).name)
+        self.assertRegex(spec['rom_commit'],r'^[0-9a-f]{40}$')
+        self.assertRegex(spec['raw_sha256'],r'^[0-9a-f]{64}$')
+        self.assertGreater(spec['raw_size'],0)
+
 class ImmutableInventoryTests(unittest.TestCase):
     def test_runtime_bytecode_changes_are_allowed_but_source_corruption_fails(self):
         with tempfile.TemporaryDirectory() as d:

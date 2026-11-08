@@ -60,7 +60,8 @@ sha256sum --check --quiet Checksums-and-manifests/files.sha256 2>&1 | tee /mnt/s
 for stock in KEKA KEE7; do
   (cd "$kit/Images/Stock/T408DL/$stock" && sha256sum --check --quiet SHA256SUMS) 2>&1 | tee "/mnt/shomer-test/stock-$stock-checksums.log"
 done
-(cd "$kit/Images/Shomer/2026-11-05_785693c" && sha256sum --check --quiet SHA256SUMS) 2>&1 | tee /mnt/shomer-test/current-image-checksums.log
+current="$kit/Images/Shomer/$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["build"])' "$kit/Checksums-and-manifests/current-image.json")"
+(cd "$current" && sha256sum --check --quiet SHA256SUMS) 2>&1 | tee /mnt/shomer-test/current-image-checksums.log
 mkdir -p /mnt/shomer-test/gui /mnt/shomer-test/image-inspection
 "$kit/Shomer-Flasher/shomer-flasher" --gui-smoke /mnt/shomer-test/gui
 test "$(find /mnt/shomer-test/gui -name '*.png' | wc -l)" -ge 6
@@ -78,7 +79,7 @@ cd /mnt/shomer-test/image-inspection
 magiskboot unpack "$kit/Images/Stock/T408DL/KEKA/boot"
 test -s ramdisk.cpio
 avbtool info_image --image "$kit/Images/Stock/T408DL/KEKA/vbmeta" >/mnt/shomer-test/avb-info.txt
-gzip -dc "$kit/Images/Shomer/2026-11-05_785693c/super.raw.gz" > /mnt/shomer-test/current-super.raw
+gzip -dc "$current/super.raw.gz" > /mnt/shomer-test/current-super.raw
 lpunpack --info /mnt/shomer-test/current-super.raw >/mnt/shomer-test/dynamic-partitions.txt
 grep -q system /mnt/shomer-test/dynamic-partitions.txt
 rm /mnt/shomer-test/current-super.raw

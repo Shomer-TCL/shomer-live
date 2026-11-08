@@ -6,6 +6,12 @@ import argparse,base64,concurrent.futures,gzip,hashlib,json,os,pathlib,shutil,su
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 BUILD=ROOT/'build';FS=BUILD/'root';KIT=FS/'opt/shomer/TCL-Flip2'
 
+def current_image():
+    spec=json.loads((ROOT/'config/current-image.json').read_text())
+    if pathlib.Path(spec['build']).name != spec['build'] or spec['build'] in ('.','..'):
+        raise ValueError('Image build must be a single directory name')
+    return spec,KIT/'Images/Shomer'/spec['build']
+
 def digest(path):
     h=hashlib.sha256()
     with path.open('rb') as f:
@@ -67,6 +73,7 @@ def tools():
             with zipfile.ZipFile(p) as z:
                 target=KIT/'Tools/Image-tools/magiskboot';target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(z.read('lib/x86_64/libmagiskboot.so'));target.chmod(0o755)
     copy(ROOT/'config/tools.lock.json',KIT/'Checksums-and-manifests/tools.lock.json')
+    copy(ROOT/'config/current-image.json',KIT/'Checksums-and-manifests/current-image.json')
 PER_DEVICE_ARTIFACTS={'efuse','frp','metadata','mmcblk0rpmb','rpmb','sec1',
                       'mmcblk0boot0','mmcblk0boot1','nvram','nvdata','nvcfg',
                       'proinfo','persist','seccfg','userdata'}
@@ -113,14 +120,16 @@ def firmware():
         expected=next(line.split()[0] for line in (dst/'SHA256SUMS').read_text().splitlines() if line.split()[-1]=='super.gz')
         checked(combined,expected)
         for p in dst.glob('super.gz.part-*'):p.unlink()
-    current=KIT/'Images/Shomer/2026-11-05_785693c';tree(BUILD/'inputs/shomer-current',current)
+    spec,current=current_image();tree(BUILD/'inputs/shomer-current',current)
     join(sorted(current.glob('super.raw.gz.part-*')),current/'super.raw.gz')
     plan=json.loads((current/'flash-plan.json').read_text());checked(current/'super.raw.gz',plan['super_raw_gz']['sha256'])
     for p in current.glob('super.raw.gz.part-*'):p.unlink()
     normalize_current(current)
     raw=BUILD/'super.raw'
     with gzip.open(current/'super.raw.gz','rb') as r,raw.open('wb') as f:shutil.copyfileobj(r,f,1024*1024)
-    checked(raw,plan['write_order'][-1]['sha256'])
+    checked(raw,spec['raw_sha256'])
+    if raw.stat().st_size != spec['raw_size'] or plan['write_order'][-1]['sha256'] != spec['raw_sha256']:
+        raise ValueError('Current image pin differs from flash plan or raw size')
     # Keep source provenance separate from the checksums of the actual package.
     keka=KIT/'Images/Stock/T408DL/KEKA'
     excluded={stock:normalize_stock(KIT/'Images/Stock/T408DL'/stock,stock) for stock in ['KEKA','KEE7']}
@@ -135,8 +144,8 @@ def build_apps():
     version=os.environ.get('VERSION','live-dev')
     run('go','build','-trimpath','-buildvcs=false','-o',BUILD/'mkbundle','./cmd/mkbundle',cwd=source)
     run('go','build','-trimpath','-buildvcs=false','-tags','gtk','-ldflags','-X main.version='+version,'-o',BUILD/'linux-stub','./cmd/shomer-flasher',cwd=source)
-    pt=KIT/'Tools/Android-platform-tools/linux/platform-tools';keka=KIT/'Images/Stock/T408DL/KEKA';current=KIT/'Images/Shomer/2026-11-05_785693c'
-    common=['-super',current/'super.raw.gz','-super-raw-sha','49303b828dff82aa5bdeea69f0acf8a5ceb5fdb59df1e34419cf168a407ddf0a','-super-raw-size','2147483648','-vbmeta-dir',keka,'-build',current.name,'-commit','785693cf8a4b3942eeddb068d9aad43d9089cf98','-flash-plan',current/'flash-plan.json','-dump-recovery',keka/'ROOTED-recovery2.img','-stock-recovery',keka/'STOCK-recovery-KEKA.img']
+    pt=KIT/'Tools/Android-platform-tools/linux/platform-tools';keka=KIT/'Images/Stock/T408DL/KEKA';spec,current=current_image()
+    common=['-super',current/'super.raw.gz','-super-raw-sha',spec['raw_sha256'],'-super-raw-size',str(spec['raw_size']),'-vbmeta-dir',keka,'-build',current.name,'-commit',spec['rom_commit'],'-flash-plan',current/'flash-plan.json','-dump-recovery',keka/'ROOTED-recovery2.img','-stock-recovery',keka/'STOCK-recovery-KEKA.img']
     run(BUILD/'mkbundle','-stub',BUILD/'linux-stub','-out',out/'shomer-flasher','-goos','linux','-tools',pt,'-tool-files','fastboot,adb',*common)
     env=dict(os.environ,CGO_ENABLED='0',GOOS='windows',GOARCH='amd64')
     run('go','build','-trimpath','-buildvcs=false','-ldflags','-X main.version='+version,'-o',BUILD/'windows-stub.exe','./cmd/shomer-flasher',cwd=source,env=env)
