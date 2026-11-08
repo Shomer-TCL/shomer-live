@@ -45,3 +45,48 @@ jobs:
     with:
       version: 0.1.0-ci.${{ github.run_number }}
       publish: false
+  windows-source:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: components/shomer-flasher/go.sum
+      - name: Read pinned fixture input commit
+        id: inputs
+        shell: bash
+        run: echo "ref=$(python -c 'import json;print(json.load(open("config/assets.lock.json"))["git_ref"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.inputs.outputs.ref }}
+          path: build/input-chunks
+          persist-credentials: false
+          sparse-checkout: stock-KEKA.tar.gz.part-*
+          sparse-checkout-cone-mode: false
+      - name: Prepare verified fixture assets
+        run: python scripts/windows-fixture.py
+      - name: Build the native Windows test flasher
+        working-directory: components/shomer-flasher
+        shell: bash
+        run: |
+          export PT_WINDOWS="$(cygpath -m "$GITHUB_WORKSPACE/build/windows-tools/platform-tools")"
+          bash test/make-test-flasher.sh "$GITHUB_WORKSPACE/build/rec" "$GITHUB_WORKSPACE/build/fixture"
+      - name: Run Windows unit tests
+        working-directory: components/shomer-flasher
+        run: go test -timeout 180s ./...
+      - name: Drive native Windows dialogs and mock flashing offline
+        shell: pwsh
+        run: |
+          pip install pywinauto==0.6.9 pillow==11.3.0
+          $binary = (Resolve-Path build/fixture/shomer-flasher-test.exe).Path
+          New-NetFirewallRule -DisplayName ShomerSourceOfflineTest -Direction Outbound -Program $binary -Action Block | Out-Null
+          & $binary --gui-smoke windows-captures
+          if ($LASTEXITCODE -ne 0) { throw 'GUI rendering failed' }
+          & $binary --gui-selftest
+          if ($LASTEXITCODE -ne 0) { throw 'GUI dialog selftest failed' }
+          python components/shomer-flasher/test/e2e_gui_windows.py $binary windows-e2e
+          if ($LASTEXITCODE -ne 0) { throw 'Windows GUI interaction failed' }
