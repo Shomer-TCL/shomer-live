@@ -162,6 +162,11 @@ jobs:
         shell: pwsh
         run: |
           pip install pywinauto==0.6.9 pillow==11.3.0
+          New-Item -ItemType Directory -Force build | Out-Null
+          go build -o build/no-phone.exe scripts/no-phone.go
+          if ($LASTEXITCODE -ne 0) { throw 'No-phone tool build failed' }
+          $env:SHOMER_FASTBOOT = (Resolve-Path build/no-phone.exe).Path
+          $env:SHOMER_ADB = $env:SHOMER_FASTBOOT
           $fixture = (Resolve-Path artifacts/shomer-flasher-test.exe).Path
           New-NetFirewallRule -DisplayName ShomerFixtureOfflineTest -Direction Outbound -Program $fixture -Action Block | Out-Null
           python components/shomer-flasher/test/e2e_gui_windows.py $fixture windows-e2e

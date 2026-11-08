@@ -76,6 +76,7 @@ jobs:
           workspace=$(cygpath -u "$GITHUB_WORKSPACE")
           export PT_WINDOWS="$(cygpath -m "$workspace/build/windows-tools/platform-tools")"
           bash test/make-test-flasher.sh "$workspace/build/rec" "$workspace/build/fixture"
+          go build -o "$workspace/build/no-phone.exe" "$workspace/scripts/no-phone.go"
       - name: Run Windows unit tests
         working-directory: components/shomer-flasher
         run: go test -timeout 180s ./...
@@ -83,6 +84,8 @@ jobs:
         shell: pwsh
         run: |
           pip install pywinauto==0.6.9 pillow==11.3.0
+          $env:SHOMER_FASTBOOT = (Resolve-Path build/no-phone.exe).Path
+          $env:SHOMER_ADB = $env:SHOMER_FASTBOOT
           $binary = (Resolve-Path build/fixture/shomer-flasher-test.exe).Path
           New-NetFirewallRule -DisplayName ShomerSourceOfflineTest -Direction Outbound -Program $binary -Action Block | Out-Null
           & $binary --gui-smoke windows-captures
