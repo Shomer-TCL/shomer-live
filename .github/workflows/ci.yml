@@ -37,3 +37,11 @@ jobs:
           sudo apt-get install -y --no-install-recommends libgtk-3-dev xvfb xauth
           cc components/shomer-flasher/test/gtk_directional.c $(pkg-config --cflags --libs gtk+-3.0) -o /tmp/gtk-directional
           xvfb-run -a /tmp/gtk-directional
+  offline-iso:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      version: 0.1.0-ci.${{ github.run_number }}
+      publish: false

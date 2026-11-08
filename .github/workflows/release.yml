@@ -1,5 +1,13 @@
 name: Build, offline-test and release ISO
 on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      publish:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       version:
