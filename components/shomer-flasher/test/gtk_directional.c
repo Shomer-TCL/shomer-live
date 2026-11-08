@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     assert(gtk_window_get_focus(GTK_WINDOW(u->window)) == u->directory);
     gboolean saw_userdata=FALSE, saw_erase=FALSE, saw_next=FALSE, saw_brom=FALSE;
     for(int i=0;i<24;i++) {
-        key(u,GDK_KEY_Down);
+        key(u,GDK_KEY_Right);
         GtkWidget *focus=gtk_window_get_focus(GTK_WINDOW(u->window));
         saw_userdata |= focus==u->userdata; saw_erase |= focus==u->erase;
         saw_next |= focus==u->next; saw_brom |= focus==u->brom;
