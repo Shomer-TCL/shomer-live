@@ -21,7 +21,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: shomer-live-release
+  group: shomer-live-${{ inputs.publish && 'publish' || github.sha }}
   cancel-in-progress: false
 env:
   VERSION: ${{ inputs.version }}
