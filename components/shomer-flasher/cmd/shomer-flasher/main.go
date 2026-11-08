@@ -192,6 +192,11 @@ func run() int {
 	}
 	defer pl.Close()
 
+	// The bundled CI fixture contains a fake ROM. Never let a normal launch use real USB tools.
+	if !fixtureIOAllowed(pl.Manifest.Build, *dry, os.Getenv("SHOMER_FASTBOOT"), os.Getenv("SHOMER_ADB")) {
+		return fail("This is a test fixture with a fake ROM. Configure both mock tool overrides or use --dry-run. Use the Shomer-Flasher program to flash a real phone.")
+	}
+
 	// work folder: always the flasher's own marked subfolder of --workdir (or
 	// of the program's folder); only the flasher's own files are ever removed
 	base := *workdir
@@ -338,4 +343,8 @@ func extractTools(pl *bundle.Payload, wdir *workfolder.Dir) (map[string]string, 
 		return nil, fmt.Errorf("fastboot/adb missing from payload")
 	}
 	return paths, nil
+}
+
+func fixtureIOAllowed(build string, dry bool, fastboot, adb string) bool {
+	return build != "ci-test" || dry || (fastboot != "" && adb != "")
 }
