@@ -73,6 +73,7 @@ jobs:
           xvfb-run -a build/root/opt/shomer/TCL-Flip2/Shomer-Flasher/shomer-flasher --gui-smoke build/gtk-captures
           xvfb-run -a sh -c 'openbox >/tmp/shomer-openbox.log 2>&1 & python3 components/shomer-flasher/test/e2e_gui_linux.py build/fixture/shomer-flasher-test build/gtk-e2e'
       - uses: actions/upload-artifact@v4
+        if: inputs.publish
         with:
           name: windows-testing
           compression-level: 0
@@ -84,6 +85,7 @@ jobs:
       - name: Build Debian BIOS/UEFI hybrid ISO
         run: bash scripts/build-iso.sh
       - name: Retain the built candidate for test diagnostics
+        if: inputs.publish
         uses: actions/upload-artifact@v4
         with:
           name: shomer-live-candidate
@@ -91,7 +93,17 @@ jobs:
           retention-days: 1
           path: build/live/live-image-amd64.hybrid.iso
       - name: Boot actual ISO without networking and verify retained backups
-        run: python3 scripts/test-iso.py build/live/live-image-amd64.hybrid.iso --out dist/boot-tests
+        run: |
+          if python3 scripts/test-iso.py build/live/live-image-amd64.hybrid.iso --out dist/boot-tests; then
+            cat dist/boot-tests/test-report.json
+          else
+            for log in dist/boot-tests/*.log; do
+              [ -f "$log" ] || continue
+              echo "Diagnostic log: $log"
+              tail -n 180 "$log"
+            done
+            exit 1
+          fi
       - name: Prepare release parts, checksums, manifests and evidence
         run: |
           python3 scripts/package-release.py build/live/live-image-amd64.hybrid.iso --version "$VERSION"
@@ -102,7 +114,7 @@ jobs:
           cp docs/RELEASE-NOTES.md dist/release/RELEASE-NOTES.md
           (cd dist/release && sha256sum shomer-flasher-windows-x64.exe > WINDOWS.sha256)
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && inputs.publish
         with:
           name: linux-test-evidence
           path: |
@@ -113,11 +125,13 @@ jobs:
             build/tui-captures/
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
+        if: inputs.publish
         with:
           name: shomer-live-release
           compression-level: 0
           path: dist/release/
   windows:
+    if: inputs.publish
     needs: build
     runs-on: windows-latest
     timeout-minutes: 40
