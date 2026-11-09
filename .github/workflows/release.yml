@@ -29,7 +29,7 @@ jobs:
   build:
     permissions:
       contents: write
-    runs-on: [self-hosted, linux, x64, shomer-live-codespace]
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
@@ -199,7 +199,7 @@ jobs:
   release:
     needs: [build, windows]
     if: inputs.publish
-    runs-on: [self-hosted, linux, x64, shomer-live-codespace]
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
