@@ -47,7 +47,7 @@ chmod +x /etc/skel/Desktop/shomer-workbench.desktop
 sed -i '/^NotShowIn=/d' /etc/xdg/autostart/lxpolkit.desktop
 ln -sf /opt/shomer/TCL-Flip2 /etc/skel/TCL-Flip2
 mkdir -p /etc/systemd/system
-for service in ModemManager.service apt-daily.service apt-daily-upgrade.service NetworkManager.service systemd-networkd.service; do ln -sf /dev/null /etc/systemd/system/$service; done
+for service in ModemManager.service apt-daily.service apt-daily.timer apt-daily-upgrade.service apt-daily-upgrade.timer NetworkManager.service systemd-networkd.service; do ln -sf /dev/null /etc/systemd/system/$service; done
 mkdir -p /etc/modules-load.d
 printf 'cdc_acm\nusbserial\nftdi_sio\ncp210x\nch341\nqemu_fw_cfg\n' > /etc/modules-load.d/shomer.conf
 mkdir -p /etc/live/config.conf.d

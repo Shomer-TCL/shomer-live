@@ -30,11 +30,13 @@ PY
   echo SHOMER_PERSISTENCE_PASS
   exit 0
 fi
+phase desktop-startup
+export DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0
+# LightDM writes its cookie before X is ready to accept clients. Wait for an actual connection.
 for i in $(seq 1 120); do
-  if [ -s /var/run/lightdm/root/:0 ]; then break; fi
+  if [ -s "$XAUTHORITY" ] && xdpyinfo >/dev/null 2>&1; then break; fi
   sleep 1
 done
-export DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0
 xdpyinfo >/dev/null
 for i in $(seq 1 60); do
   if pgrep -u shomer -x xfce4-session >/dev/null && pgrep -u shomer -x lxpolkit >/dev/null; then break; fi
