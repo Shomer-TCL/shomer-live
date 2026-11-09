@@ -129,11 +129,12 @@ First verify all packaged hashes:
 
 Prepare the pinned current super image on your selected writable drive:
 
-  gzip -dc "$kit/Images/Shomer/2026-11-05_785693c/super.raw.gz" > super.raw
+  current="$kit/Images/Shomer/$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["build"])' "$kit/Checksums-and-manifests/current-image.json")"
+  gzip -dc "$current/super.raw.gz" > super.raw
   sha256sum super.raw
 
-Expected SHA-256, 2,147,483,648 bytes:
-49303b828dff82aa5bdeea69f0acf8a5ceb5fdb59df1e34419cf168a407ddf0a
+Compare size and SHA-256 with raw_size and raw_sha256 in:
+  $kit/Checksums-and-manifests/current-image.json
 
 Review flash-plan.json in that same image directory. With the supported phone,
 verified backup, restored stock recovery, unlocked bootloader and confirmed

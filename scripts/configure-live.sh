@@ -21,10 +21,13 @@ sed 's/^timeout 0$/timeout 30/' /usr/share/live/build/bootloaders/isolinux/isoli
 cp ../../config/packages.list config/package-lists/shomer.list.chroot
 mkdir -p config/includes.chroot/opt/shomer config/hooks/live
 cp -a ../root/. config/includes.chroot/
+mkdir -p config/includes.chroot/usr/local/lib/shomer
+cp ../../scripts/inventory.py config/includes.chroot/usr/local/lib/shomer/inventory.py
 cat > config/hooks/live/0500-shomer.hook.chroot <<'HOOK'
 #!/bin/sh
 set -eu
 printf 'shomer-live\n' > /etc/hostname
+touch /etc/shomer-live
 mkdir -p /etc/lightdm/lightdm.conf.d /etc/skel/Desktop /etc/xdg/autostart
 printf '[Seat:*]\nautologin-user=shomer\nautologin-session=xfce\n' > /etc/lightdm/lightdm.conf.d/50-shomer.conf
 # No host disks are automatically mounted. Explicit file-manager mounts remain possible.
@@ -44,7 +47,7 @@ chmod +x /etc/skel/Desktop/shomer-workbench.desktop
 sed -i '/^NotShowIn=/d' /etc/xdg/autostart/lxpolkit.desktop
 ln -sf /opt/shomer/TCL-Flip2 /etc/skel/TCL-Flip2
 mkdir -p /etc/systemd/system
-for service in ModemManager.service apt-daily.service apt-daily-upgrade.service NetworkManager.service systemd-networkd.service; do ln -sf /dev/null /etc/systemd/system/$service; done
+for service in ModemManager.service apt-daily.service apt-daily.timer apt-daily-upgrade.service apt-daily-upgrade.timer NetworkManager.service systemd-networkd.service; do ln -sf /dev/null /etc/systemd/system/$service; done
 mkdir -p /etc/modules-load.d
 printf 'cdc_acm\nusbserial\nftdi_sio\ncp210x\nch341\nqemu_fw_cfg\n' > /etc/modules-load.d/shomer.conf
 mkdir -p /etc/live/config.conf.d
@@ -61,6 +64,6 @@ python3 -m venv "$kit/Tools/MTKClient/venv"
 chmod -R a+rX "$kit"
 dpkg-query -W -f='${Package}\t${Version}\n' > /opt/shomer/TCL-Flip2/Checksums-and-manifests/debian-packages.tsv
 cd "$kit"
-find . -type f ! -path './Checksums-and-manifests/files.sha256' -print0 | sort -z | xargs -0 sha256sum > Checksums-and-manifests/files.sha256
+python3 /usr/local/lib/shomer/inventory.py "$kit"
 HOOK
 chmod +x config/hooks/live/0500-shomer.hook.chroot

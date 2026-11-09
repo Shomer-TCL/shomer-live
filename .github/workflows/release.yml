@@ -1,5 +1,13 @@
 name: Build, offline-test and release ISO
 on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      publish:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       version:
@@ -13,12 +21,14 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: shomer-live-release
+  group: shomer-live-${{ inputs.publish && 'publish' || github.sha }}
   cancel-in-progress: false
 env:
   VERSION: ${{ inputs.version }}
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -69,55 +79,65 @@ jobs:
           python3 "$source_dir/test/e2e_tui.py" "$PWD/build/fixture/shomer-flasher-test" build/tui-captures
       - name: Test native GTK states and keyboard interaction
         run: |
+          cc components/shomer-flasher/test/gtk_directional.c $(pkg-config --cflags --libs gtk+-3.0) -o /tmp/gtk-directional
+          xvfb-run -a /tmp/gtk-directional
           build/root/opt/shomer/TCL-Flip2/Shomer-Flasher/shomer-flasher --version
           xvfb-run -a build/root/opt/shomer/TCL-Flip2/Shomer-Flasher/shomer-flasher --gui-smoke build/gtk-captures
           xvfb-run -a sh -c 'openbox >/tmp/shomer-openbox.log 2>&1 & python3 components/shomer-flasher/test/e2e_gui_linux.py build/fixture/shomer-flasher-test build/gtk-e2e'
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-testing
-          compression-level: 0
-          path: |
-            dist/shomer-flasher-windows-x64.exe
-            build/fixture/shomer-flasher-test.exe
+      - name: Stage Windows test inputs on an unpublished draft
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/fixture/shomer-flasher-test.exe dist/shomer-flasher-test.exe
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --prerelease --title "Shomer Live $VERSION" --notes 'Validation in progress. This draft must not be published until all gates pass.' dist/shomer-flasher-windows-x64.exe dist/shomer-flasher-test.exe
       - name: Remove redundant generated staging inputs
         run: rm -rf build/input-chunks build/archives build/inputs build/super.raw
+      - name: Preserve package manifests before ISO build
+        run: |
+          mkdir -p dist/staged-manifests
+          cp build/root/opt/shomer/TCL-Flip2/Checksums-and-manifests/*.json dist/staged-manifests/
       - name: Build Debian BIOS/UEFI hybrid ISO
-        run: bash scripts/build-iso.sh
-      - name: Retain the built candidate for test diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: shomer-live-candidate
-          compression-level: 0
-          retention-days: 1
-          path: build/live/live-image-amd64.hybrid.iso
+        run: |
+          df -h .
+          bash scripts/build-iso.sh
+          df -h .
+      - name: Preserve packaged manifests and reclaim ISO build trees
+        run: |
+          sudo rm -rf build/root build/live/chroot build/live/config/includes.chroot build/live/binary build/live/.build build/live/cache
+          df -h .
       - name: Boot actual ISO without networking and verify retained backups
-        run: python3 scripts/test-iso.py build/live/live-image-amd64.hybrid.iso --out dist/boot-tests
+        run: |
+          if python3 scripts/test-iso.py build/live/live-image-amd64.hybrid.iso --out dist/boot-tests; then
+            cat dist/boot-tests/test-report.json
+          else
+            for log in dist/boot-tests/*.log; do
+              [ -f "$log" ] || continue
+              echo "Diagnostic log: $log"
+              tail -n 180 "$log"
+            done
+            exit 1
+          fi
       - name: Prepare release parts, checksums, manifests and evidence
         run: |
           python3 scripts/package-release.py build/live/live-image-amd64.hybrid.iso --version "$VERSION"
           cp dist/shomer-flasher-windows-x64.exe dist/release/
           cp dist/boot-tests/test-report.json dist/release/
-          cp build/root/opt/shomer/TCL-Flip2/Checksums-and-manifests/*.json dist/release/
+          cp dist/staged-manifests/*.json dist/release/
           cp docs/TESTING.md dist/release/VALIDATION.md
           cp docs/RELEASE-NOTES.md dist/release/RELEASE-NOTES.md
           (cd dist/release && sha256sum shomer-flasher-windows-x64.exe > WINDOWS.sha256)
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: linux-test-evidence
-          path: |
-            dist/boot-tests/*.log
-            dist/boot-tests/*.json
-            build/gtk-captures/
-            build/gtk-e2e/
-            build/tui-captures/
-          if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
-        with:
-          name: shomer-live-release
-          compression-level: 0
-          path: dist/release/
+      - name: Stage validated Linux release files on the draft
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tar -czf dist/linux-test-evidence.tar.gz dist/boot-tests build/gtk-captures build/gtk-e2e build/tui-captures
+          gh release upload "v$VERSION" --repo "$GITHUB_REPOSITORY" dist/release/* dist/linux-test-evidence.tar.gz --clobber
   windows:
+    permissions:
+      contents: write
+    if: inputs.publish
     needs: build
     runs-on: windows-latest
     timeout-minutes: 40
@@ -129,17 +149,20 @@ jobs:
         with:
           go-version: '1.27.3'
           cache-dependency-path: components/shomer-flasher/go.sum
-      - uses: actions/download-artifact@v4
-        with:
-          name: windows-testing
-          path: artifacts
+      - name: Download Windows inputs from the unpublished draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v$env:VERSION" --repo "$env:GITHUB_REPOSITORY" --pattern shomer-flasher-windows-x64.exe --pattern shomer-flasher-test.exe --dir artifacts
+          if ($LASTEXITCODE -ne 0) { throw 'Draft test inputs unavailable' }
       - name: Native Windows unit tests
         working-directory: components/shomer-flasher
         run: go test -timeout 180s ./...
       - name: Render all Windows GUI states and test dialogs offline
         shell: pwsh
         run: |
-          $binary = (Resolve-Path artifacts/dist/shomer-flasher-windows-x64.exe).Path
+          $binary = (Resolve-Path artifacts/shomer-flasher-windows-x64.exe).Path
           New-NetFirewallRule -DisplayName ShomerOfflineTest -Direction Outbound -Program $binary -Action Block | Out-Null
           & $binary --gui-smoke windows-captures
           if ($LASTEXITCODE -ne 0) { throw 'GUI rendering failed' }
@@ -150,7 +173,12 @@ jobs:
         shell: pwsh
         run: |
           pip install pywinauto==0.6.9 pillow==11.3.0
-          $fixture = (Resolve-Path artifacts/build/fixture/shomer-flasher-test.exe).Path
+          New-Item -ItemType Directory -Force build | Out-Null
+          go build -o build/no-phone.exe scripts/no-phone.go
+          if ($LASTEXITCODE -ne 0) { throw 'No-phone tool build failed' }
+          $env:SHOMER_FASTBOOT = (Resolve-Path build/no-phone.exe).Path
+          $env:SHOMER_ADB = $env:SHOMER_FASTBOOT
+          $fixture = (Resolve-Path artifacts/shomer-flasher-test.exe).Path
           New-NetFirewallRule -DisplayName ShomerFixtureOfflineTest -Direction Outbound -Program $fixture -Action Block | Out-Null
           python components/shomer-flasher/test/e2e_gui_windows.py $fixture windows-e2e
           if ($LASTEXITCODE -ne 0) { throw 'Windows GUI interaction failed' }
@@ -160,14 +188,14 @@ jobs:
           python scripts/package-release.py README.md --version 0.0.0-test --out join-test
           & join-test/Join-ISO.ps1
           if (-not (Test-Path join-test/shomer-live-0.0.0-test-amd64.iso)) { throw 'Windows reassembly failed' }
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: windows-test-evidence
-          path: |
-            windows-captures/
-            windows-e2e/
-          if-no-files-found: ignore
+      - name: Stage Windows test evidence on the draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Compress-Archive -Path windows-captures,windows-e2e -DestinationPath windows-test-evidence.zip
+          gh release upload "v$env:VERSION" --repo "$env:GITHUB_REPOSITORY" windows-test-evidence.zip
+          if ($LASTEXITCODE -ne 0) { throw 'Evidence upload failed' }
   release:
     needs: [build, windows]
     if: inputs.publish
@@ -175,12 +203,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: shomer-live-release
-          path: release
-      - name: Publish tested prerelease without overwriting a release
+      - name: Publish only after Linux and Windows gates pass
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "Shomer Live $VERSION — offline TCL Flip 2 workbench" --notes-file release/RELEASE-NOTES.md release/*
+          gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" --pattern RELEASE-NOTES.md --dir release
+          gh release delete-asset "v$VERSION" shomer-flasher-test.exe --repo "$GITHUB_REPOSITORY" --yes
+          gh release edit "v$VERSION" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease --title "Shomer Live $VERSION — offline TCL Flip 2 workbench" --notes-file release/RELEASE-NOTES.md

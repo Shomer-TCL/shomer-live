@@ -31,3 +31,66 @@ jobs:
           GOARCH: amd64
           CGO_ENABLED: '0'
         run: go build -o /tmp/shomer-windows.exe ./cmd/shomer-flasher
+      - name: Native GTK directional focus regression
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-3-dev xvfb xauth
+          cc components/shomer-flasher/test/gtk_directional.c $(pkg-config --cflags --libs gtk+-3.0) -o /tmp/gtk-directional
+          xvfb-run -a /tmp/gtk-directional
+  offline-iso:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      version: 0.1.0-ci.${{ github.run_number }}
+      publish: false
+  windows-source:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: components/shomer-flasher/go.sum
+      - name: Read pinned fixture input commit
+        id: inputs
+        shell: bash
+        run: echo "ref=$(python -c 'import json;print(json.load(open("config/assets.lock.json"))["git_ref"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.inputs.outputs.ref }}
+          path: build/input-chunks
+          persist-credentials: false
+          sparse-checkout: stock-KEKA.tar.gz.part-*
+          sparse-checkout-cone-mode: false
+      - name: Prepare verified fixture assets
+        run: python scripts/windows-fixture.py
+      - name: Build the native Windows test flasher
+        working-directory: components/shomer-flasher
+        shell: bash
+        run: |
+          workspace=$(cygpath -u "$GITHUB_WORKSPACE")
+          export PT_WINDOWS="$(cygpath -m "$workspace/build/windows-tools/platform-tools")"
+          bash test/make-test-flasher.sh "$workspace/build/rec" "$workspace/build/fixture"
+          go build -o "$workspace/build/no-phone.exe" "$workspace/scripts/no-phone.go"
+      - name: Run Windows unit tests
+        working-directory: components/shomer-flasher
+        run: go test -timeout 180s ./...
+      - name: Drive native Windows dialogs and mock flashing offline
+        shell: pwsh
+        run: |
+          pip install pywinauto==0.6.9 pillow==11.3.0
+          $env:SHOMER_FASTBOOT = (Resolve-Path build/no-phone.exe).Path
+          $env:SHOMER_ADB = $env:SHOMER_FASTBOOT
+          $binary = (Resolve-Path build/fixture/shomer-flasher-test.exe).Path
+          New-NetFirewallRule -DisplayName ShomerSourceOfflineTest -Direction Outbound -Program $binary -Action Block | Out-Null
+          & $binary --gui-smoke windows-captures
+          if ($LASTEXITCODE -ne 0) { throw 'GUI rendering failed' }
+          & $binary --gui-selftest
+          if ($LASTEXITCODE -ne 0) { throw 'GUI dialog selftest failed' }
+          python components/shomer-flasher/test/e2e_gui_windows.py $binary windows-e2e
+          if ($LASTEXITCODE -ne 0) { throw 'Windows GUI interaction failed' }

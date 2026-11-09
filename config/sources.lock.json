@@ -24,8 +24,8 @@
     {
       "name": "shomer-flasher",
       "repository": "https://github.com/Shomer-TCL/shomer-flasher",
-      "commit": "4508eee3176f0f6c5f1154d3c6a7e0ddc256751a",
-      "branch": "feat/linux-live-iso"
+      "commit": "b58110fada0146fca9b3c18f7de4693a1d85e3e8",
+      "branch": "fix/live-backup-keypad"
     },
     {
       "name": "neutronscott-wiki",

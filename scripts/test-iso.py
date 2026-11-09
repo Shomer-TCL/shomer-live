@@ -12,9 +12,17 @@ def accelerator():
         print('KVM is not accessible to this runner; using TCG software emulation',flush=True)
     return 'tcg'
 
+def collect_guest_logs(disk,mode,phase,out):
+    # The synthetic test disk has no customer data. Keep the last completed stage and child-test output.
+    for name in ['boot-test.log','mock-console.log','mock-tui.log','mtk-gui.log','dynamic-partitions.txt','avb-info.txt']:
+        result=subprocess.run(['debugfs','-R','cat /'+name,str(disk)],capture_output=True,text=True,timeout=30)
+        if result.returncode==0 and result.stdout:
+            (out/f'{mode}-{phase}.guest-{name}.log').write_text(result.stdout)
+
+
 def run_vm(iso,disk,mode,phase,out,accel):
     print(f'Booting actual release ISO: {mode} phase {phase}, {accel}, no NIC',flush=True)
-    log=out/f'{mode}-{phase}.serial.log';args=['qemu-system-x86_64','-m','4096','-smp','2','-accel',accel,'-cpu','host' if accel=='kvm' else 'max','-nic','none','-display','none','-no-reboot','-boot','d','-cdrom',str(iso),'-drive',f'file={disk},format=raw,if=virtio','-serial','file:'+str(log),'-fw_cfg','name=opt/shomer/selftest,string=1']
+    log=out/f'{mode}-{phase}.serial.log';args=['qemu-system-x86_64','-m','4096','-smp','2','-accel',accel,'-cpu','host' if accel=='kvm' else 'max','-nic','none','-display','none','-no-reboot','-boot','d','-cdrom',str(iso),'-drive',f'file={disk},format=raw,if=virtio,cache=none,werror=report,rerror=report','-serial','file:'+str(log),'-fw_cfg','name=opt/shomer/selftest,string=1']
     if mode=='uefi':
         code=pathlib.Path('/usr/share/OVMF/OVMF_CODE_4M.fd');variables=pathlib.Path('/usr/share/OVMF/OVMF_VARS_4M.fd')
         if not code.exists() or not variables.exists():raise RuntimeError('OVMF firmware missing')
@@ -36,6 +44,7 @@ def run_vm(iso,disk,mode,phase,out,accel):
             p.terminate()
             try:p.wait(timeout=10)
             except subprocess.TimeoutExpired:p.kill();p.wait()
+            collect_guest_logs(disk,mode,phase,out)
             raise
     data=log.read_text(errors='replace') if log.exists() else ''
     error=(out/f'{mode}-{phase}.qemu.log').read_text(errors='replace')
