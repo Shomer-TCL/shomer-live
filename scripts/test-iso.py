@@ -22,7 +22,7 @@ def collect_guest_logs(disk,mode,phase,out):
 
 def run_vm(iso,disk,mode,phase,out,accel):
     print(f'Booting actual release ISO: {mode} phase {phase}, {accel}, no NIC',flush=True)
-    log=out/f'{mode}-{phase}.serial.log';args=['qemu-system-x86_64','-m','4096','-smp','2','-accel',accel,'-cpu','host' if accel=='kvm' else 'max','-nic','none','-display','none','-no-reboot','-boot','d','-cdrom',str(iso),'-drive',f'file={disk},format=raw,if=virtio','-serial','file:'+str(log),'-fw_cfg','name=opt/shomer/selftest,string=1']
+    log=out/f'{mode}-{phase}.serial.log';args=['qemu-system-x86_64','-m','4096','-smp','2','-accel',accel,'-cpu','host' if accel=='kvm' else 'max','-nic','none','-display','none','-no-reboot','-boot','d','-cdrom',str(iso),'-drive',f'file={disk},format=raw,if=virtio,cache=none,werror=report,rerror=report','-serial','file:'+str(log),'-fw_cfg','name=opt/shomer/selftest,string=1']
     if mode=='uefi':
         code=pathlib.Path('/usr/share/OVMF/OVMF_CODE_4M.fd');variables=pathlib.Path('/usr/share/OVMF/OVMF_VARS_4M.fd')
         if not code.exists() or not variables.exists():raise RuntimeError('OVMF firmware missing')

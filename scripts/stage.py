@@ -121,7 +121,8 @@ def firmware():
         checked(combined,expected)
         for p in dst.glob('super.gz.part-*'):p.unlink()
     spec,current=current_image();tree(BUILD/'inputs/shomer-current',current)
-    join(sorted(current.glob('super.raw.gz.part-*')),current/'super.raw.gz')
+    if not (current/'super.raw.gz').exists():
+        join(sorted(current.glob('super.raw.gz.part-*')),current/'super.raw.gz')
     plan=json.loads((current/'flash-plan.json').read_text());checked(current/'super.raw.gz',plan['super_raw_gz']['sha256'])
     for p in current.glob('super.raw.gz.part-*'):p.unlink()
     normalize_current(current)

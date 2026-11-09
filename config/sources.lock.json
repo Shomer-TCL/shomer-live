@@ -24,7 +24,7 @@
     {
       "name": "shomer-flasher",
       "repository": "https://github.com/Shomer-TCL/shomer-flasher",
-      "commit": "546ea99e9323fb75d00513dd041446643c700bce",
+      "commit": "b58110fada0146fca9b3c18f7de4693a1d85e3e8",
       "branch": "fix/live-backup-keypad"
     },
     {

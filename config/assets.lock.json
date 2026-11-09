@@ -124,59 +124,59 @@
     },
     {
       "name": "shomer-current.tar.gz",
-      "sha256": "557199768bdc9012b88e2ca34a620d8f90aabe1095401163b4cf9c35a02103f6",
-      "size": 724997699,
+      "sha256": "ae92e88f7421242b7ceb3c5f86a7e686afed89ed3ca2fd1450b9968bc09846f6",
+      "size": 725441314,
       "source": "Shomer-TCL/shomer-images",
-      "source_commit": "8e8e7f5d4e0f814b7acee5f764235938162ad2cd",
-      "source_path": "builds/2026-11-05_785693c",
+      "source_commit": "168b4cbf3acee4070bbfb0b048a0633689a6441d",
+      "source_path": "builds/2026-11-09_6fabafc",
       "parts": [
         {
           "name": "shomer-current.tar.gz.part-000",
-          "sha256": "68ea6ed0721246e891bcd0a84dd279458eb4f5a9dd8492f5934ac0c0eca0a38f",
+          "sha256": "7fb6eb1411d84df152cc485883031fa1be536113864bcb579ad82537350f6572",
           "size": 85000000
         },
         {
           "name": "shomer-current.tar.gz.part-001",
-          "sha256": "888a306676ca8dcc2bb35ee419953937343182d3575b9dc0149744384e4f805b",
+          "sha256": "4378f0f02cca215c545ec5a9fe2f35b0cfc17b7f905259ea61382f6978fd6675",
           "size": 85000000
         },
         {
           "name": "shomer-current.tar.gz.part-002",
-          "sha256": "dd9ff2d494ab64b80d84ab07a1c1fb1b17c542cdc562614e35c4686c3c395fd5",
+          "sha256": "a0f31628fe254a0bbe282e60028ddc6532ef5bfedd29044a4928a09b088a4b7e",
           "size": 85000000
         },
         {
           "name": "shomer-current.tar.gz.part-003",
-          "sha256": "3905953c5e7f90e208b2db63d563e5875ea1ea91a7418d98e58c434a40cfe668",
+          "sha256": "02b83449c2b4f83cbad117e8886f04fa4a86e38486e36f5996dc91855e1a56ba",
           "size": 85000000
         },
         {
           "name": "shomer-current.tar.gz.part-004",
-          "sha256": "e7593dea19e1704cb358b24b410b9dc0e589d40b4da035713398459da0dc2938",
+          "sha256": "36afa7c19e6d330b54fdbc2a76b66bee7feeb377658a322e335dc5787fd9dc44",
           "size": 85000000
         },
         {
           "name": "shomer-current.tar.gz.part-005",
-          "sha256": "3d3067c1c14b8fc9cc12d98b7de9da8756b8e9418de35ea6cf01d7c6fb737e98",
+          "sha256": "bb8aabfd7b0d23b78521fbee4cad5a0eca677d50df0926eff05dd006c46a68e0",
           "size": 85000000
         },
         {
           "name": "shomer-current.tar.gz.part-006",
-          "sha256": "5de3f31fb7488da362069c9a58f9c8dcf0042cdf01266a29481414a5774fe0fd",
+          "sha256": "b65d9eca101425032d8a9262edfc5e33ade5570b10166a62788b941e707208a7",
           "size": 85000000
         },
         {
           "name": "shomer-current.tar.gz.part-007",
-          "sha256": "af5d1225766676f1c939d4dc1f48534c19d9c24068ed20b2bec65e2cd3857c59",
+          "sha256": "0bfa7cd7e9bc5b4c68e02804fc74cb2bae5ddc03107c7fee2e53788151c5a684",
           "size": 85000000
         },
         {
           "name": "shomer-current.tar.gz.part-008",
-          "sha256": "5ca9056233a258002ebc00177196a2f469ea16582f8a8e649eb72d4568445f46",
-          "size": 44997699
+          "sha256": "95417568db5fa8eaa144e4dd50da15dadff2950aa5b458c45e41e17ab0859010",
+          "size": 45441314
         }
       ]
     }
   ],
-  "git_ref": "aa5d06b69346b0aaa109ee7e9cf835407d3b80e0"
+  "git_ref": "991e52a8b309f5e445b2eab03b6542eab0bc2a31"
 }

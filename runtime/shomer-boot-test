@@ -87,7 +87,13 @@ test -s ramdisk.cpio
 phase stock-vbmeta
 timeout 60s avbtool info_image --image "$kit/Images/Stock/T408DL/KEKA/vbmeta" >/mnt/shomer-test/avb-info.txt
 phase super-decompression
-timeout 180s gzip -dc "$current/super.raw.gz" > /mnt/shomer-test/current-super.raw
+set -o pipefail
+timeout 300s gzip -dc "$current/super.raw.gz" | timeout 300s dd of=/mnt/shomer-test/current-super.raw bs=4M conv=sparse,fsync status=progress
+phase super-decompression-checksum
+expected_raw_sha=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["raw_sha256"])' "$kit/Checksums-and-manifests/current-image.json")
+expected_raw_size=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["raw_size"])' "$kit/Checksums-and-manifests/current-image.json")
+test "$(stat -c %s /mnt/shomer-test/current-super.raw)" = "$expected_raw_size"
+echo "$expected_raw_sha  /mnt/shomer-test/current-super.raw" | sha256sum --check --status
 phase super-metadata
 timeout 60s lpunpack --info /mnt/shomer-test/current-super.raw >/mnt/shomer-test/dynamic-partitions.txt
 grep -q system /mnt/shomer-test/dynamic-partitions.txt

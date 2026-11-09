@@ -94,7 +94,16 @@ jobs:
       - name: Remove redundant generated staging inputs
         run: rm -rf build/input-chunks build/archives build/inputs build/super.raw
       - name: Build Debian BIOS/UEFI hybrid ISO
-        run: bash scripts/build-iso.sh
+        run: |
+          df -h .
+          bash scripts/build-iso.sh
+          df -h .
+      - name: Preserve packaged manifests and reclaim ISO build trees
+        run: |
+          mkdir -p dist/staged-manifests
+          cp build/root/opt/shomer/TCL-Flip2/Checksums-and-manifests/*.json dist/staged-manifests/
+          rm -rf build/root build/live/chroot build/live/config/includes.chroot build/live/binary build/live/.build build/live/cache
+          df -h .
       - name: Boot actual ISO without networking and verify retained backups
         run: |
           if python3 scripts/test-iso.py build/live/live-image-amd64.hybrid.iso --out dist/boot-tests; then
@@ -112,7 +121,7 @@ jobs:
           python3 scripts/package-release.py build/live/live-image-amd64.hybrid.iso --version "$VERSION"
           cp dist/shomer-flasher-windows-x64.exe dist/release/
           cp dist/boot-tests/test-report.json dist/release/
-          cp build/root/opt/shomer/TCL-Flip2/Checksums-and-manifests/*.json dist/release/
+          cp dist/staged-manifests/*.json dist/release/
           cp docs/TESTING.md dist/release/VALIDATION.md
           cp docs/RELEASE-NOTES.md dist/release/RELEASE-NOTES.md
           (cd dist/release && sha256sum shomer-flasher-windows-x64.exe > WINDOWS.sha256)
