@@ -93,6 +93,10 @@ jobs:
           gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --prerelease --title "Shomer Live $VERSION" --notes 'Validation in progress. This draft must not be published until all gates pass.' dist/shomer-flasher-windows-x64.exe dist/shomer-flasher-test.exe
       - name: Remove redundant generated staging inputs
         run: rm -rf build/input-chunks build/archives build/inputs build/super.raw
+      - name: Preserve package manifests before ISO build
+        run: |
+          mkdir -p dist/staged-manifests
+          cp build/root/opt/shomer/TCL-Flip2/Checksums-and-manifests/*.json dist/staged-manifests/
       - name: Build Debian BIOS/UEFI hybrid ISO
         run: |
           df -h .
@@ -100,8 +104,6 @@ jobs:
           df -h .
       - name: Preserve packaged manifests and reclaim ISO build trees
         run: |
-          mkdir -p dist/staged-manifests
-          cp build/root/opt/shomer/TCL-Flip2/Checksums-and-manifests/*.json dist/staged-manifests/
           rm -rf build/root build/live/chroot build/live/config/includes.chroot build/live/binary build/live/.build build/live/cache
           df -h .
       - name: Boot actual ISO without networking and verify retained backups
