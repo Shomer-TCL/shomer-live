@@ -104,7 +104,7 @@ jobs:
           df -h .
       - name: Preserve packaged manifests and reclaim ISO build trees
         run: |
-          rm -rf build/root build/live/chroot build/live/config/includes.chroot build/live/binary build/live/.build build/live/cache
+          sudo rm -rf build/root build/live/chroot build/live/config/includes.chroot build/live/binary build/live/.build build/live/cache
           df -h .
       - name: Boot actual ISO without networking and verify retained backups
         run: |
