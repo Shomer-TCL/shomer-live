@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, linux, x64, shomer-live-codespace]
     steps:
       - uses: actions/checkout@v4
         with:
