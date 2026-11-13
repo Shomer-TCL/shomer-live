@@ -25,7 +25,9 @@ behavior, successful real-phone flashing, physical Rufus USB boot, or Secure Boo
 compatibility. Release notes and `test-report.json` keep these unrun checks separate.
 Do not claim the TAG ROM caused a particular failure without device evidence.
 
-The BROM helper only runs MTKClient storage reads. It requires BROM enumeration,
-positive eMMC geometry and two equal full reads of user/boot1/boot2. RPMB/efuses are
-excluded. A rooted recovery backup is explicitly different: it needs unlock and
-overwrites recovery first; encrypted userdata may not be recoverable as user files.
+The BROM backup helper requires BROM enumeration, positive eMMC geometry and two
+equal full reads of user/boot1/boot2. The new BROM flash path additionally requires
+an enrolled live-device reference, a fresh full backup before writes, branch-matched
+vbmeta headers, and complete per-partition read-back hashes. It never writes boot.
+RPMB/efuses are excluded. A rooted recovery backup is explicitly different: it needs
+unlock and overwrites recovery first; encrypted userdata may not be recoverable as user files.

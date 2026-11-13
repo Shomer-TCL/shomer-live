@@ -2,12 +2,14 @@
 set -euo pipefail
 root=/opt/shomer/TCL-Flip2
 while true; do
-  choice=$(zenity --list --radiolist --title='Shomer Workbench' --width=760 --height=380 \
+  choice=$(zenity --list --radiolist --title='Shomer Workbench' --width=820 --height=500 \
     --text='Start with a read-only BROM backup when the phone supports it. Recovery backup is a separate fallback. Nothing flashes automatically.' \
     --column=Select --column=Action --column=Description \
     TRUE 'BROM backup' 'Read eMMC user area and boot areas twice; compare hashes' \
+    FALSE 'Enroll BROM reference' 'Bind a completed 4058G UPCI backup to live BROM identity' \
+    FALSE 'BROM flash' 'Backup first; flash only plan-approved partitions with read-back checks' \
     FALSE 'Shomer GUI' 'Review images, recovery backup fallback, install current Shomer ROM' \
-    FALSE 'Shomer terminal' 'The same engine in a terminal interface' \
+    FALSE 'Shomer terminal' 'The same fastboot engine in a terminal interface' \
     FALSE 'MTKClient GUI' 'Advanced tool: includes destructive commands; use deliberately' \
     FALSE 'Documentation' 'Offline guides, supported phones and limitations' \
     FALSE 'Files and images' 'Open the organized offline toolkit') || exit 0
@@ -15,6 +17,17 @@ while true; do
     Documentation) mousepad "$root/START-HERE/User-guide.txt" & ;;
     'Files and images') thunar "$root" & ;;
     'MTKClient GUI') xfce4-terminal --hold --command='mtk-gui' & ;;
+    'Enroll BROM reference')
+      ref=$(zenity --file-selection --directory --title='Choose the completed private BROM backup from this 4058G UPCI phone') || continue
+      if ! shomer-check-destination "$ref"; then zenity --error --text='The reference backup must be on persistent writable block storage.'; continue; fi
+      xfce4-terminal --hold --execute shomer-brom-enroll --backup-directory "$ref" --log-directory "$ref/enroll-logs" & ;;
+    'BROM flash')
+      ref=$(zenity --file-selection --directory --title='Choose its enrolled BROM reference backup') || continue
+      if [ ! -f "$ref/brom-identity.json" ]; then zenity --error --text='This backup has no enrolled BROM identity. Choose Enroll BROM reference first.'; continue; fi
+      dest=$(zenity --file-selection --directory --title='Choose persistent drive folder for the new verified backup, work files and logs') || continue
+      if ! shomer-check-destination "$dest"; then zenity --error --text='Choose writable block-backed storage; live RAM is not persistent.'; continue; fi
+      mkdir -p "$dest/Shomer-work" "$dest/Shomer-backups" "$dest/Shomer-logs"
+      xfce4-terminal --hold --execute "$root/Shomer-Flasher/shomer-flasher" --brom --brom-reference "$ref" --workdir "$dest/Shomer-work" --backup-dir "$dest/Shomer-backups" --log-dir "$dest/Shomer-logs" & ;;
     'BROM backup'|'Shomer GUI'|'Shomer terminal')
       dest=$(zenity --file-selection --directory --title='Choose a folder on a mounted backup drive (not live RAM)') || continue
       if ! shomer-check-destination "$dest"; then zenity --error --text='Choose writable block-backed storage. The live RAM filesystem cannot retain backups after shutdown.'; continue; fi

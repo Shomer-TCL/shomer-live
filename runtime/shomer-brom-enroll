@@ -1,0 +1,47 @@
+#!/usr/bin/python3
+"""Enroll a trusted UPCI BROM reference from a completed, private phone backup."""
+import argparse
+import datetime
+import json
+import pathlib
+import sys
+
+import shomer_brom as brom
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--backup-directory", required=True, help="completed Shomer BROM backup of this phone")
+    ap.add_argument("--log-directory", help="persistent log folder; defaults inside the backup")
+    args = ap.parse_args()
+    backup = pathlib.Path(args.backup_directory).resolve()
+    logs = pathlib.Path(args.log_directory).resolve() if args.log_directory else backup / "enroll-logs"
+    profile = brom.fingerprint_from_backup(backup, require_model_marker=True)
+    brom.validate_identity_profile(profile)
+    print("Reference dump checks passed:")
+    print("  model/build: 4058G UPCI (from swversion and super product fingerprint)")
+    print("  boot1 SHA-256:", profile["boot1"]["sha256"])
+    print("  swversion SHA-256:", profile["swversion"]["sha256"])
+    print("Connect the same phone whose completed backup is selected, powered off in BROM mode.")
+    typed = input("Type ENROLL 4058G UPCI to compare the live chip/preloader/partition heads: ").strip()
+    if typed != "ENROLL 4058G UPCI":
+        raise ValueError("enrollment cancelled; no reference profile was written")
+    actual = brom.live_fingerprint(profile, logs)
+    mismatches = brom.compare_fingerprints(profile, actual)
+    if mismatches:
+        raise ValueError("connected phone does not match this backup in: " + ", ".join(mismatches))
+    profile["enrolled_utc"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    target = backup / "brom-identity.json"
+    tmp = target.with_suffix(".json.partial")
+    tmp.write_text(json.dumps(profile, indent=2) + "\n")
+    tmp.replace(target)
+    print("BROM identity reference enrolled:", target)
+    print("The profile contains hashes only; keep the full phone backup private.")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (Exception, KeyboardInterrupt) as exc:
+        print("STOP:", exc, file=sys.stderr)
+        sys.exit(1)

@@ -1,4 +1,7 @@
 SUBSYSTEM=="usb", ATTR{idVendor}=="0e8d", MODE="0660", GROUP="dialout", TAG+="uaccess", ENV{ID_MM_DEVICE_IGNORE}="1"
+# Match MediaTek's CDC-ACM preloader explicitly. Keep the generic MediaTek tty
+# rule below as well for other serial interfaces exposed by the handset.
+SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="0e8d", MODE="0660", GROUP="dialout", TAG+="uaccess", ENV{ID_MM_DEVICE_IGNORE}="1"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="0e8d", MODE="0660", GROUP="dialout", TAG+="uaccess", ENV{ID_MM_DEVICE_IGNORE}="1"
 SUBSYSTEM=="usb", ATTR{idVendor}=="1bbb", MODE="0660", GROUP="dialout", TAG+="uaccess"
 SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", MODE="0660", GROUP="dialout", TAG+="uaccess"

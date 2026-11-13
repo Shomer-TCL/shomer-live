@@ -33,6 +33,19 @@ The guided helper performs the following with size/hash/completeness checks:
 
   shomer-brom-backup --destination /media/shomer/BACKUPS
 
+For the owner's 4058G UPCI phone only, enroll that completed backup against the
+same live handset before enabling BROM flash:
+
+  shomer-brom-enroll --backup-directory /media/shomer/BACKUPS/TCL-BROM-YYYYMMDD-HHMMSS
+
+The helper asks for `ENROLL 4058G UPCI` after reading the backup fingerprints;
+then it reads chip code, boot1, swversion and partition heads from the connected
+phone. A mismatch stops enrollment. From the workbench, choose **BROM flash**.
+The equivalent flasher flag is `--brom --brom-reference <enrolled-backup>` and
+requires persistent `--backup-dir`, `--workdir` and `--log-dir` paths. It makes
+a new full BROM backup before writes. The pinned KEKA vbmeta source must match
+the UPCI reference's headers; if it does not, the command stops before writing.
+
 For advanced manual reads, work in a fresh backup directory:
 
   mtk printgpt > geometry.log 2>&1

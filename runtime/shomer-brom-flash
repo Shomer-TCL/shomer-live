@@ -1,0 +1,234 @@
+#!/usr/bin/python3
+"""Backup-first BROM installation of the flash-plan-approved Shomer image."""
+import argparse
+import datetime
+import gzip
+import hashlib
+import json
+import os
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+
+import shomer_brom as brom
+
+
+def digest(path):
+    return brom.sha_file(path)
+
+
+def validate_vbmeta_branch(part, data, reference):
+    """Require untouched stock vbmeta bytes to match this enrolled UPCI phone."""
+    head_size = reference["heads"][part]["size"]
+    if len(data) < head_size or brom.sha_bytes(data[:head_size]) != reference["heads"][part]["sha256"]:
+        raise ValueError(
+            part + " source belongs to a different firmware branch/build than the enrolled UPCI handset; "
+            "no BROM writes are allowed"
+        )
+
+
+def run_logged(label, command, logdir, timeout=3600, input_bytes=None):
+    return brom.write_log(logdir, label, command, timeout=timeout) if input_bytes is None else _run_input(label, command, logdir, timeout, input_bytes)
+
+
+def _run_input(label, command, logdir, timeout, input_bytes):
+    path = pathlib.Path(logdir) / (label + ".log")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as out:
+        try:
+            proc = subprocess.run(command, input=input_bytes, stdout=out, stderr=subprocess.STDOUT, timeout=timeout)
+        except Exception as exc:
+            out.write(("\nERROR: " + str(exc) + "\n").encode())
+            raise ValueError(label + " failed; see " + str(path)) from exc
+    if proc.returncode:
+        raise ValueError(label + " failed with exit " + str(proc.returncode) + "; see " + str(path))
+    return path
+
+
+def verify_reference(refdir):
+    refdir = pathlib.Path(refdir).resolve()
+    profile_path = refdir / "brom-identity.json"
+    if not profile_path.is_file():
+        raise ValueError("trusted reference has no brom-identity.json; run shomer-brom-enroll first")
+    profile = json.loads(profile_path.read_text())
+    brom.validate_identity_profile(profile)
+    actual = brom.fingerprint_from_backup(refdir, require_model_marker=True)
+    if brom.compare_fingerprints(profile, actual):
+        raise ValueError("reference profile no longer matches its source backup")
+    return profile
+
+
+def verify_plan_and_prepare(kit, workdir, reference):
+    kit = pathlib.Path(kit)
+    spec = json.loads((kit / "Checksums-and-manifests/current-image.json").read_text())
+    image_dir = kit / "Images/Shomer" / spec["build"]
+    plan = json.loads((image_dir / "flash-plan.json").read_text())
+    order = [s.get("partition") for s in plan.get("write_order", [])]
+    if order != list(brom.WRITE_PARTS):
+        raise ValueError("flash-plan write_order differs from the approved BROM allowlist/order")
+    if plan.get("vbmeta_flags") != ["--disable-verity", "--disable-verification"]:
+        raise ValueError("flash-plan vbmeta flags are missing or changed")
+    never = {str(x).split()[0] for x in plan.get("never_written", [])}
+    if "boot" not in never or any(p not in order for p in brom.WRITE_PARTS):
+        raise ValueError("flash-plan does not keep boot forbidden and list every approved write")
+    raw_sha = str(spec.get("raw_sha256", "")).lower()
+    raw_size = int(spec.get("raw_size", 0))
+    if not re.fullmatch(r"[0-9a-f]{64}", raw_sha) or raw_size <= 0:
+        raise ValueError("current-image manifest has invalid super size/hash")
+    super_entry = next((s for s in plan["write_order"] if s["partition"] == "super"), None)
+    if not super_entry or super_entry.get("sha256", "").lower() != raw_sha:
+        raise ValueError("flash-plan super hash differs from current-image manifest")
+    trusted = brom.fingerprint_from_backup(reference, require_model_marker=True)
+    stock = kit / "Images/Stock/T408DL/KEKA"
+    inputs = {}
+    for part in ("vbmeta", "vbmeta_system", "vbmeta_vendor"):
+        entry = next((s for s in plan["write_order"] if s["partition"] == part), None)
+        source = stock / part
+        if not entry or not source.is_file() or digest(source) != entry.get("sha256", "").lower():
+            raise ValueError("pinned stock " + part + " does not match flash-plan.json")
+        data = bytearray(source.read_bytes())
+        # AOSP fastboot's --disable-verity/--disable-verification rewrite sets
+        # bits 0/1 in the big-endian AVB header flags word at byte offset 120.
+        if len(data) < 256 or data[:4] != b"AVB0":
+            raise ValueError(part + " is not a complete AVB0 vbmeta image")
+        validate_vbmeta_branch(part, data, trusted)
+        data[123] |= 0x03
+        target = pathlib.Path(workdir) / (part + ".brom.img")
+        target.write_bytes(data)
+        inputs[part] = target
+    compressed = image_dir / "super.raw.gz"
+    if not compressed.is_file():
+        raise ValueError("pinned super.raw.gz is missing")
+    out = pathlib.Path(workdir) / "super.raw"
+    h = hashlib.sha256()
+    n = 0
+    with gzip.open(compressed, "rb") as source, out.open("wb") as target:
+        while True:
+            block = source.read(1024 * 1024)
+            if not block:
+                break
+            target.write(block)
+            h.update(block)
+            n += len(block)
+    if n != raw_size or h.hexdigest() != raw_sha:
+        raise ValueError("decompressed Shomer super size/hash differs from the signed release manifest")
+    inputs["super"] = out
+    return spec, plan, inputs
+
+
+def ensure_live_backup_matches(profile, backup_dir, logdir, mtk):
+    print("BROM backup first: the phone must be powered off in BROM mode.")
+    input("Connect the same phone and press Enter to start the verified full backup (Ctrl+C cancels): ")
+    helper = shutil.which("shomer-brom-backup")
+    if not helper:
+        raise ValueError("shomer-brom-backup is missing from this Live ISO")
+    dest = pathlib.Path(backup_dir).resolve()
+    cmd = [helper, "--destination", str(dest)]
+    result_log = _run_input("backup", cmd, logdir, 4 * 60 * 60, b"\n")
+    output = result_log.read_text(errors="replace")
+    found = re.search(r"BROM BACKUP COMPLETE for recorded eMMC areas only\. Keep it private:\s*(.+)", output)
+    if not found:
+        raise ValueError("backup helper did not report a complete backup; see " + str(result_log))
+    path = pathlib.Path(found.group(1).strip()).resolve()
+    if not path.is_dir():
+        raise ValueError("completed backup folder reported by helper is missing")
+    actual = brom.fingerprint_from_backup(path, require_model_marker=False)
+    chip_log = run_logged("post-backup-gettargetconfig", [mtk, "gettargetconfig"], logdir)
+    actual["hwcode"] = f"0x{brom.parse_hwcode(chip_log.read_text(errors='replace')):04x}"
+    brom.validate_identity_profile(actual)
+    mismatches = brom.compare_fingerprints(profile, actual)
+    if mismatches:
+        raise ValueError("fresh backup no longer matches the trusted 4058G UPCI reference: " + ", ".join(mismatches))
+    return path
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--reference", required=True, help="enrolled 4058G UPCI BROM backup directory")
+    ap.add_argument("--backup-dir", required=True, help="persistent physical drive folder for the new backup")
+    ap.add_argument("--workdir", required=True, help="persistent physical drive folder for temporary flash images")
+    ap.add_argument("--log-dir", required=True, help="persistent folder for MTKClient logs and read-backs")
+    ap.add_argument("--kit-dir", default="/opt/shomer/TCL-Flip2")
+    args = ap.parse_args()
+    refdir = pathlib.Path(args.reference).resolve()
+    workdir = pathlib.Path(args.workdir).resolve()
+    backup_dir = pathlib.Path(args.backup_dir).resolve()
+    logdir = pathlib.Path(args.log_dir).resolve()
+    for directory in (workdir, backup_dir, logdir):
+        directory.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["shomer-check-destination", str(directory)], check=True)
+    subprocess.run(["shomer-check-destination", str(workdir), "--max-file-bytes", str(2 * 1024**3)], check=True)
+    profile = verify_reference(refdir)
+    brom.validate_identity_profile(profile)
+    lock_path = workdir / ".shomer-brom-flash.lock"
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        raise ValueError("another BROM flash is using this work directory")
+    os.write(fd, str(os.getpid()).encode())
+    os.close(fd)
+
+    try:
+        mtk = shutil.which("mtk")
+        if not mtk:
+            raise ValueError("MTKClient CLI is missing")
+        brom.validate_identity_profile(profile)
+        print("Trusted device:", profile["model"], profile["build"], "HW code", profile["hwcode"])
+        print("Checking live BROM identity before any write...")
+        live = brom.live_fingerprint(profile, logdir, mtk)
+        mismatches = brom.compare_fingerprints(profile, live)
+        if mismatches:
+            raise ValueError("connected BROM device differs from the trusted reference: " + ", ".join(mismatches))
+
+        spec, plan, images = verify_plan_and_prepare(args.kit_dir, workdir, refdir)
+        gpt = brom.gpt_partitions(refdir / "user.bin")
+        for part, image in images.items():
+            if image.stat().st_size != gpt[part]["size"]:
+                raise ValueError(f"{part} image size {image.stat().st_size} does not exactly fit trusted GPT size {gpt[part]['size']}")
+
+        print("\nBROM installation plan (no boot, recovery, modem, identity, or GPT writes):")
+        for part in brom.WRITE_PARTS:
+            print(f"  {part}: {images[part].stat().st_size} bytes, SHA-256 {digest(images[part])}")
+        print("A verified full BROM backup will be made immediately before writing.")
+        typed = input(f"Type FLASH {spec['build']} UPCI to continue: ").strip()
+        if typed != f"FLASH {spec['build']} UPCI":
+            raise ValueError("flash cancelled; no phone partition was written")
+
+        backup = ensure_live_backup_matches(profile, backup_dir, logdir, mtk)
+        (logdir / "backup-path.txt").write_text(str(backup) + "\n")
+        print("Backup verified against the enrolled device reference.")
+
+        for part in brom.WRITE_PARTS:
+            image = images[part]
+            print(f"Writing {part} through MTKClient BROM...")
+            run_logged("write-" + part, [mtk, "w", part, str(image)], logdir, timeout=2 * 60 * 60)
+            readback = logdir / (part + ".readback.bin")
+            run_logged("readback-" + part, [mtk, "r", part, str(readback)], logdir, timeout=2 * 60 * 60)
+            if not readback.is_file() or readback.stat().st_size != image.stat().st_size:
+                raise ValueError(part + " read-back size mismatch; stopped before the next write")
+            if digest(readback) != digest(image):
+                raise ValueError(part + " read-back SHA-256 mismatch; stopped before the next write")
+            print(part + " read-back SHA-256 verified")
+
+        run_logged("reset", [mtk, "reset"], logdir, timeout=120)
+        print("BROM flash completed; all four partitions passed full read-back verification.")
+        print("Logs:", logdir)
+        print("Private backup:", backup)
+    finally:
+        try:
+            lock_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (Exception, KeyboardInterrupt) as exc:
+        # No cleanup of work files or logs on failure. In particular, do not
+        # reset the handset after a failed write/read-back operation.
+        print("STOP: " + str(exc), file=sys.stderr)
+        print("Failure evidence retained in the selected log/work directories.", file=sys.stderr)
+        sys.exit(1)

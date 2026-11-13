@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -37,31 +38,66 @@ func main() {
 
 func run() int {
 	var (
-		port    = flag.String("port", "", "serial port of the phone's preloader (normally found automatically), e.g. COM5 or /dev/ttyACM0")
-		workdir = flag.String("workdir", "", "folder to unpack the ROM into (needs ~2.3 GB free); default: a folder next to this program")
-		keep    = flag.Bool("keep", false, "keep the unpacked ROM after finishing")
-		dry     = flag.Bool("dry-run", false, "check and unpack the ROM and show what would run, without touching any phone")
-		info    = flag.Bool("info", false, "print what is inside this flasher and exit")
-		noPause = flag.Bool("no-pause", false, "do not wait for Enter before closing")
-		showVer = flag.Bool("version", false, "print version and exit")
-		backup  = flag.Bool("backup", true, "backup-first: copy every partition of the phone into a zip on this computer before flashing (default on)")
-		noBak   = flag.Bool("no-backup", false, "do not make a backup (recovery is then never touched)")
-		bakDir  = flag.String("backup-dir", "", "folder for the backup zip (needs ~3 GB free, ~8 GB with --backup-userdata); default: a folder 'shomer-backups' next to this program")
-		bakUser = flag.Bool("backup-userdata", false, "also copy userdata (phone data, ~4.6 GB, encrypted). Only possible if the bootloader is ALREADY unlocked: unlocking erases it")
-		resRec  = flag.Bool("restore-recovery", false, "only write the stock TCL recovery back (use after an interrupted backup), then stop")
-		variant = flag.String("variant", "", "the phone's software version, KEKA or UPCI, if you already know it (answers the 'which version?' question; useful when adb cannot read the phone)")
-		forceV  = flag.Bool("force-variant", false, "if the model/variant/version check warns, go on with your own KEKA/UPCI choice without asking (the warning is still shown). Checksums, backup, disk and connection checks still stop")
-		contNB  = flag.Bool("continue-without-backup", false, "if the backup fails, flash anyway without asking (for unattended runs). The stock recovery is still put back first")
-		cli     = flag.Bool("cli", false, "plain console mode: questions in this window, no full-screen TUI (Linux) or window (Windows)")
-		forceUI = flag.Bool("ui", false, "open the TUI (Linux) / window (Windows) even when not started from a terminal")
-		guiUI   = flag.Bool("gui", false, "open the native desktop window (GTK build on Linux, Win32 on Windows)")
-		tuiUI   = flag.Bool("tui", false, "use the Linux terminal interface even in a native GTK build")
-		logDir  = flag.String("log-dir", "", "folder for persistent logs (recommended on a live USB)")
-		lics    = flag.Bool("licenses", false, "print the licences of the open-source parts inside this program and exit")
-		selfT   = flag.Bool("gui-selftest", false, "test only (Windows): open the window's question boxes and answer them through Windows messages; prints PASS/FAIL lines")
-		smoke   = flag.String("gui-smoke", "", "test only: open the window, show every screen with example data, close again; PNG screenshots go into the folder given ('-' = none)")
+		port     = flag.String("port", "", "serial port of the phone's preloader (normally found automatically), e.g. COM5 or /dev/ttyACM0")
+		workdir  = flag.String("workdir", "", "folder to unpack the ROM into (needs ~2.3 GB free); default: a folder next to this program")
+		keep     = flag.Bool("keep", false, "keep the unpacked ROM after finishing")
+		dry      = flag.Bool("dry-run", false, "check and unpack the ROM and show what would run, without touching any phone")
+		info     = flag.Bool("info", false, "print what is inside this flasher and exit")
+		noPause  = flag.Bool("no-pause", false, "do not wait for Enter before closing")
+		showVer  = flag.Bool("version", false, "print version and exit")
+		bromMode = flag.Bool("brom", false, "backup-first flash through MTKClient BROM (Shomer Live Linux only; requires --brom-reference)")
+		bromRef  = flag.String("brom-reference", "", "enrolled private 4058G UPCI BROM backup directory")
+		backup   = flag.Bool("backup", true, "backup-first: copy every partition of the phone into a zip on this computer before flashing (default on)")
+		noBak    = flag.Bool("no-backup", false, "do not make a backup (recovery is then never touched)")
+		bakDir   = flag.String("backup-dir", "", "folder for the backup zip (needs ~3 GB free, ~8 GB with --backup-userdata); default: a folder 'shomer-backups' next to this program")
+		bakUser  = flag.Bool("backup-userdata", false, "also copy userdata (phone data, ~4.6 GB, encrypted). Only possible if the bootloader is ALREADY unlocked: unlocking erases it")
+		resRec   = flag.Bool("restore-recovery", false, "only write the stock TCL recovery back (use after an interrupted backup), then stop")
+		variant  = flag.String("variant", "", "the phone's software version, KEKA or UPCI, if you already know it (answers the 'which version?' question; useful when adb cannot read the phone)")
+		forceV   = flag.Bool("force-variant", false, "if the model/variant/version check warns, go on with your own KEKA/UPCI choice without asking (the warning is still shown). Checksums, backup, disk and connection checks still stop")
+		contNB   = flag.Bool("continue-without-backup", false, "if the backup fails, flash anyway without asking (for unattended runs). The stock recovery is still put back first")
+		cli      = flag.Bool("cli", false, "plain console mode: questions in this window, no full-screen TUI (Linux) or window (Windows)")
+		forceUI  = flag.Bool("ui", false, "open the TUI (Linux) / window (Windows) even when not started from a terminal")
+		guiUI    = flag.Bool("gui", false, "open the native desktop window (GTK build on Linux, Win32 on Windows)")
+		tuiUI    = flag.Bool("tui", false, "use the Linux terminal interface even in a native GTK build")
+		logDir   = flag.String("log-dir", "", "folder for persistent logs (recommended on a live USB)")
+		lics     = flag.Bool("licenses", false, "print the licences of the open-source parts inside this program and exit")
+		selfT    = flag.Bool("gui-selftest", false, "test only (Windows): open the window's question boxes and answer them through Windows messages; prints PASS/FAIL lines")
+		smoke    = flag.String("gui-smoke", "", "test only: open the window, show every screen with example data, close again; PNG screenshots go into the folder given ('-' = none)")
 	)
 	flag.Parse()
+	if *bromMode {
+		if runtime.GOOS != "linux" {
+			fmt.Fprintln(os.Stderr, "--brom is available only in the Shomer Live Linux environment")
+			return 2
+		}
+		if *bromRef == "" || *bakDir == "" || *workdir == "" || *logDir == "" {
+			fmt.Fprintln(os.Stderr, "--brom requires --brom-reference, --backup-dir, --workdir, and --log-dir")
+			return 2
+		}
+		if *noBak || !*backup || *contNB || *bakUser || *resRec || *dry || *variant != "" || *forceV || *guiUI || *tuiUI || *cli {
+			fmt.Fprintln(os.Stderr, "--brom cannot skip its BROM backup or be combined with recovery, variant, dry-run, or other interface options")
+			return 2
+		}
+		helper, err := exec.LookPath("shomer-brom-flash")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "shomer-brom-flash is not installed; run this option from Shomer Live")
+			return 2
+		}
+		cmd := exec.Command(helper, "--reference", *bromRef, "--backup-dir", *bakDir, "--workdir", *workdir, "--log-dir", *logDir, "--kit-dir", "/opt/shomer/TCL-Flip2")
+		cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+		if err := cmd.Run(); err != nil {
+			if e, ok := err.(*exec.ExitError); ok {
+				return e.ExitCode()
+			}
+			fmt.Fprintln(os.Stderr, "could not start BROM flasher:", err)
+			return 1
+		}
+		return 0
+	}
+	if *bromRef != "" {
+		fmt.Fprintln(os.Stderr, "--brom-reference requires --brom")
+		return 2
+	}
 	forceTerminalUI = *tuiUI
 	if *guiUI && (*tuiUI || *cli) {
 		fmt.Fprintln(os.Stderr, "--gui cannot be combined with --tui or --cli")

@@ -10,9 +10,11 @@ KEE7 reference firmware, Neutronscott images/tools, MTKClient CLI/GUI with compl
 offline dependencies/loaders/payloads, Android platform-tools and image utilities.
 The separate Windows flasher executable uses the same engine and GUI presentation.
 
-The guided workflow prefers read-only MTKClient BROM backup when available;
-recovery backup is a separate fallback. Mode transitions and recovery size are
-verified before writes. Backups/logs use explicitly selected writable storage.
+The guided workflow includes MTKClient BROM backup and an identity-enrolled BROM
+flash mode for the owner's 4058G UPCI handset. It requires a matching reference,
+a fresh full backup, branch-matched vbmeta headers, and complete read-back checks.
+Fastboot/recovery backup remains a separate workflow. Mode transitions and
+recovery size are verified before fastboot writes. Backups/logs use selected storage.
 No production private signing keys or customer backups are included.
 
 Publication requires the release workflow's Linux, Windows and offline BIOS/UEFI

@@ -2,6 +2,7 @@ package flasher
 
 import (
 	"errors"
+	"io"
 	"strings"
 	"time"
 
@@ -71,23 +72,41 @@ func (s *SerialPreloader) Handshake(port, seq string, timeout time.Duration) (st
 	if _, err := p.Write([]byte(seq)); err != nil {
 		return "", err
 	}
+	return collectPreloaderReply(p, timeout)
+}
+
+// collectPreloaderReply tolerates serial drivers that return a timeout error
+// alongside a partial read. The reply is eight bytes, and CDC-ACM may split it
+// across reads; returning on the first timeout can hand the caller an incomplete
+// reply for its expected-response check.
+func collectPreloaderReply(r io.Reader, timeout time.Duration) (string, error) {
 	deadline := time.Now().Add(timeout)
-	var got []byte
+	got := make([]byte, 0, 8)
 	buf := make([]byte, 16)
 	for len(got) < 8 && time.Now().Before(deadline) {
-		n, err := p.Read(buf)
+		n, err := r.Read(buf)
 		if n > 0 {
+			need := 8 - len(got)
+			if n > need {
+				n = need
+			}
 			got = append(got, buf[:n]...)
 		}
-		if err != nil {
+		if len(got) >= 8 {
 			break
+		}
+		if err != nil && len(got) == 0 {
+			if errors.Is(err, io.EOF) {
+				return "", errors.New("no answer from preloader")
+			}
+			return "", err
+		}
+		if n == 0 {
+			time.Sleep(time.Millisecond)
 		}
 	}
 	if len(got) == 0 {
 		return "", errors.New("no answer from preloader")
-	}
-	if len(got) > 8 {
-		got = got[:8]
 	}
 	return string(got), nil
 }

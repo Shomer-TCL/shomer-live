@@ -9,9 +9,34 @@ KEKA-based Shomer image on an arbitrary older handset without normalization/test
 Neutronscott images are version-specific. A KEFS boot image is not an approved
 Shomer KEKA/UPCI installation input. Reference tools never select these automatically.
 
-BROM accessibility varies with firmware/hardware. The cited single UPCI handset
-report could not enter BROM, while community reports describe other workflows.
-No general claim that every Flip 2 accepts MTKClient is made.
+BROM access was confirmed by the owner on their actual 4058G UPCI handset
+(2026-11-13), including a full MTKClient backup. BROM flash mode is therefore
+available only with an enrolled backup from that exact handset. Enrollment
+compares live chip code, preloader, swversion and partition heads to the backup.
+Before writes, the flasher makes another complete backup and repeats identity
+checks. It writes only the four partitions in the pinned flash plan and verifies
+each complete read-back. Boot, recovery, GPT and calibration/identity partitions
+are never written by this route. A mismatch, ambiguous identity or failed
+verification stops the sequence and preserves logs.
+
+The pinned flash plan currently sources vbmeta files from stock KEKA. BROM mode
+compares their headers to the enrolled UPCI backup and refuses to write if they
+differ. Public UPCI dumps may be used for research, but cannot substitute for
+the owner's enrolled backup as proof of the connected phone's identity.
+
+The public WolfLink115/t408dl-firmware-tool describes a distinct experimental
+volatile Preloader exploit and XFlash Download Agent chain, validated on one
+T408DL whose reported KEEZ/KEFS lineage differs from both the 4058G UPCI and
+Shomer KEKA cases. Its README warns that cross-flashing incompatible low-level
+components rendered a test phone USB-silent. Its described safeguards validate
+live GPT geometry and write/read-back hashes; the README does not claim model
+and build identity checks. This is not standard MTKClient BROM and is not
+evidence that its donor images or checks generalize to UPCI/KEKA:
+https://github.com/WolfLink115/t408dl-firmware-tool/tree/47a0438a9be374efeacaefac731eddef2ad94815
+
+A public dump can establish its donor's firmware contents; it cannot by itself
+prove the connected handset's model/build. Never enroll a KEKA or other donor
+backup as a UPCI reference, and never bypass a branch/header mismatch.
 
 Real phone installation, radio, emergency calling, camera, reset and rollback tests
 need designated physical units. The release test report identifies unrun hardware checks.

@@ -1,8 +1,12 @@
 import importlib.machinery,importlib.util,json,pathlib,subprocess,tempfile,unittest
+import sys
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 def load(name,path):
     loader=importlib.machinery.SourceFileLoader(name,str(path));spec=importlib.util.spec_from_loader(name,loader);module=importlib.util.module_from_spec(spec);loader.exec_module(module);return module
 brom=load('brom',ROOT/'runtime/shomer-brom-backup')
+sys.path.insert(0,str(ROOT/'runtime'))
+brom_identity=load('brom_identity',ROOT/'runtime/shomer_brom.py')
+brom_flash=load('brom_flash',ROOT/'runtime/shomer-brom-flash')
 stage=load('stage',ROOT/'scripts/stage.py')
 iso=load('iso',ROOT/'scripts/test-iso.py')
 inventory=load('inventory',ROOT/'scripts/inventory.py')
@@ -17,6 +21,13 @@ class CurrentImageTests(unittest.TestCase):
         self.assertRegex(spec['rom_commit'],r'^[0-9a-f]{40}$')
         self.assertRegex(spec['raw_sha256'],r'^[0-9a-f]{64}$')
         self.assertGreater(spec['raw_size'],0)
+
+class UdevRuleTests(unittest.TestCase):
+    def test_mtk_cdc_acm_rule_is_explicit_and_staged_into_iso(self):
+        rules=(ROOT/'config/51-shomer-flip.rules').read_text()
+        self.assertIn('SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="0e8d"',rules)
+        self.assertIn('GROUP="dialout", TAG+="uaccess"',rules)
+        self.assertIn("copy(ROOT/'config/51-shomer-flip.rules',FS/'etc/udev/rules.d/51-shomer-flip.rules')",(ROOT/'scripts/stage.py').read_text())
 
 class ImmutableInventoryTests(unittest.TestCase):
     def test_runtime_bytecode_changes_are_allowed_but_source_corruption_fails(self):
@@ -103,6 +114,18 @@ class GeometryTests(unittest.TestCase):
     def test_nonempty_general_purpose_areas_are_not_silently_omitted(self):
         data='EMMC Boot1 Size: 0x20\nEMMC Boot2 Size: 0x20\nEMMC USER Size: 0x1000\nEMMC GP1 Size: 0x800\nEMMC GP2 Size: 0x0'
         self.assertEqual(brom.geometry(data),{'user':4096,'boot1':32,'boot2':32,'gp1':2048})
+
+class BromIdentityTests(unittest.TestCase):
+    def test_reference_comparison_includes_partition_offsets_and_guids(self):
+        expected={'model':'4058G','build':'UPCI','hwcode':'0x6739','boot1':{},'swversion':{},'heads':{},'gpt':{'super':{'offset':4096,'size':8192,'unique_guid':'abc'}}}
+        actual=json.loads(json.dumps(expected));actual['gpt']['super']['offset']=8192
+        self.assertIn('gpt',brom_identity.compare_fingerprints(expected,actual))
+
+    def test_branch_mismatched_vbmeta_is_rejected(self):
+        reference={'heads':{'vbmeta':{'size':16,'sha256':brom_identity.sha_bytes(b'UPCI vbmeta head')}}}
+        brom_flash.validate_vbmeta_branch('vbmeta',b'UPCI vbmeta head'+b'remainder',reference)
+        with self.assertRaisesRegex(ValueError,'different firmware branch'):
+            brom_flash.validate_vbmeta_branch('vbmeta',b'KEKA vbmeta head'+b'remainder',reference)
 
 class ArchiveTests(unittest.TestCase):
     def test_archive_traversal_and_links_are_rejected(self):
